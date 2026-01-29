@@ -190,6 +190,15 @@ class SolarMap:
     except ValueError:
       pass
 
+    # Capsuleers will only be able to leave Zarzakh via the gate through which
+    # they arrived until the 6-hour timer runs out.
+    # See: https://www.eveonline.com/news/view/zarzakh-is-under-siege
+    # However, players can always exit Zarzakh via the Deathless Shipcaster,
+    # Clone Jumping, or being pod killed, regardless of the lock.
+    # See: https://wiki.eveuniversity.org/Zarzakh
+    if self.eve_db.ZARZAKH_SYSTEM_ID not in [source, destination]:
+      avoidance_list = avoidance_list + [self.eve_db.ZARZAKH_SYSTEM_ID]
+
     path = []
 
     priority_queue: List[Tuple[int, int, SolarSystem]] = []

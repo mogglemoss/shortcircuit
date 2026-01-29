@@ -417,3 +417,186 @@ def test_jita_tama_but_avoid_tama():
     'Nourvukaiken',
     'Tama',
   ]
+
+
+def test_zarzakh_avoided_as_transit():
+  """
+  Test that Zarzakh is automatically excluded from routes where it would be
+  an intermediate waypoint. Zarzakh has emanation locks that prevent transit.
+  See: https://github.com/secondfry/shortcircuit/issues/30
+  """
+  eve_db = EveDb()
+  map = SolarMap(eve_db)
+  
+  # Create wormhole connections that would make Zarzakh an attractive transit point
+  # Jita -> G-0Q86 (wormhole) -> Zarzakh (gate) -> H-PA29 (gate) -> Dodixie (wormhole)
+  # Without the Zarzakh exclusion, this would be the shortest path
+  map.add_connection(
+    eve_db.name2id("Jita"),
+    eve_db.name2id("G-0Q86"),
+    ConnectionType.WORMHOLE,
+    [
+      "ABC-123",
+      None,
+      "DEF-456",
+      None,
+      WormholeSize.LARGE,
+      WormholeTimespan.STABLE,
+      WormholeMassspan.STABLE,
+      1.0,
+    ],
+  )
+  map.add_connection(
+    eve_db.name2id("H-PA29"),
+    eve_db.name2id("Dodixie"),
+    ConnectionType.WORMHOLE,
+    [
+      "GHI-789",
+      None,
+      "JKL-012",
+      None,
+      WormholeSize.LARGE,
+      WormholeTimespan.STABLE,
+      WormholeMassspan.STABLE,
+      1.0,
+    ],
+  )
+  
+  path = map.shortest_path(
+    eve_db.name2id("Jita"),
+    eve_db.name2id("Dodixie"),
+    {
+      "size_restriction": {
+        WormholeSize.SMALL: False,
+        WormholeSize.MEDIUM: False,
+        WormholeSize.LARGE: False,
+        WormholeSize.XLARGE: False,
+      },
+      "avoidance_list": [],
+      "security_prio": {
+        SpaceType.HS: 1,
+        SpaceType.LS: 1,
+        SpaceType.NS: 1,
+        SpaceType.WH: 1,
+      },
+      "ignore_eol": False,
+      "ignore_masscrit": False,
+      "age_threshold": float('inf'),
+    },
+  )
+
+  named_path = [eve_db.id2name(x) for x in path]
+  # Verify Zarzakh is not in the path as an intermediate system
+  assert "Zarzakh" not in named_path
+
+
+def test_zarzakh_as_destination():
+  """
+  Test that Zarzakh can be used as a destination system.
+  Even though it's excluded from transit, players should be able to route TO it.
+  See: https://github.com/secondfry/shortcircuit/issues/30
+  """
+  eve_db = EveDb()
+  map = SolarMap(eve_db)
+  
+  # Add wormhole connection from Ikuchi to G-0Q86
+  # This creates a fast path: Ikuchi -> G-0Q86 -> Zarzakh
+  map.add_connection(
+    eve_db.name2id("Ikuchi"),
+    eve_db.name2id("G-0Q86"),
+    ConnectionType.WORMHOLE,
+    [
+      "ABC-123",
+      None,
+      "DEF-456",
+      None,
+      WormholeSize.LARGE,
+      WormholeTimespan.STABLE,
+      WormholeMassspan.STABLE,
+      1.0,
+    ],
+  )
+  
+  # Route from Ikuchi to Zarzakh
+  path = map.shortest_path(
+    eve_db.name2id("Ikuchi"),
+    eve_db.name2id("Zarzakh"),
+    {
+      "size_restriction": {
+        WormholeSize.SMALL: False,
+        WormholeSize.MEDIUM: False,
+        WormholeSize.LARGE: False,
+        WormholeSize.XLARGE: False,
+      },
+      "avoidance_list": [],
+      "security_prio": {
+        SpaceType.HS: 1,
+        SpaceType.LS: 1,
+        SpaceType.NS: 1,
+        SpaceType.WH: 1,
+      },
+      "ignore_eol": False,
+      "ignore_masscrit": False,
+      "age_threshold": float('inf'),
+    },
+  )
+
+  named_path = [eve_db.id2name(x) for x in path]
+  # Verify the exact path: Ikuchi -> G-0Q86 -> Zarzakh
+  assert named_path == ["Ikuchi", "G-0Q86", "Zarzakh"]
+
+
+def test_zarzakh_as_source():
+  """
+  Test that Zarzakh can be used as a source system.
+  Even though it's excluded from transit, players should be able to route FROM it.
+  See: https://github.com/secondfry/shortcircuit/issues/30
+  """
+  eve_db = EveDb()
+  map = SolarMap(eve_db)
+  
+  # Add wormhole connection from Turnur to Perimeter
+  # This creates a fast path: Zarzakh -> Turnur -> Perimeter
+  map.add_connection(
+    eve_db.name2id("Turnur"),
+    eve_db.name2id("Perimeter"),
+    ConnectionType.WORMHOLE,
+    [
+      "ABC-123",
+      None,
+      "DEF-456",
+      None,
+      WormholeSize.LARGE,
+      WormholeTimespan.STABLE,
+      WormholeMassspan.STABLE,
+      1.0,
+    ],
+  )
+  
+  # Route from Zarzakh to Perimeter
+  path = map.shortest_path(
+    eve_db.name2id("Zarzakh"),
+    eve_db.name2id("Perimeter"),
+    {
+      "size_restriction": {
+        WormholeSize.SMALL: False,
+        WormholeSize.MEDIUM: False,
+        WormholeSize.LARGE: False,
+        WormholeSize.XLARGE: False,
+      },
+      "avoidance_list": [],
+      "security_prio": {
+        SpaceType.HS: 1,
+        SpaceType.LS: 1,
+        SpaceType.NS: 1,
+        SpaceType.WH: 1,
+      },
+      "ignore_eol": False,
+      "ignore_masscrit": False,
+      "age_threshold": float('inf'),
+    },
+  )
+
+  named_path = [eve_db.id2name(x) for x in path]
+  # Verify the exact path: Zarzakh -> Turnur -> Perimeter
+  assert named_path == ["Zarzakh", "Turnur", "Perimeter"]

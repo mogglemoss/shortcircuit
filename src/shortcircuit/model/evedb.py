@@ -408,6 +408,8 @@ class EveDb(metaclass=Singleton):
     }
   }
 
+  ZARZAKH_SYSTEM_ID = 30100000
+
   def __init__(self):
     filename_statics = 'statics.csv'
     filaname_renames = 'renames.csv'
