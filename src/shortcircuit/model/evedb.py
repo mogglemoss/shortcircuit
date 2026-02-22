@@ -2,6 +2,8 @@
 
 import csv
 from enum import Enum
+import sys
+import os
 from os import path
 from typing import Dict, List, Optional, TypedDict, Union
 from typing_extensions import deprecated
@@ -11,10 +13,69 @@ from .utility.singleton import Singleton
 
 
 def get_csv_reader(filename: str):
-  bundle_dir = path.abspath(path.dirname(__file__))
-  filepath = path.join(bundle_dir, '..', '..', 'database', filename)
+  if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app
+    # path into variable _MEIPASS'.
+    bundle_dir = getattr(sys, '_MEIPASS', path.dirname(sys.executable))
+
+    # Check multiple possible locations for the database file to be robust
+    # against different packaging methods (onefile, onedir, .app bundle)
+    candidates = [
+      path.join(bundle_dir, 'database', filename),
+      path.join(bundle_dir, filename),
+      path.join(bundle_dir, 'src', 'database', filename),
+      # macOS .app bundle specific locations
+      path.join(path.dirname(bundle_dir), 'Resources', 'database', filename),
+      path.join(path.dirname(sys.executable), '..', 'Resources', 'database', filename),
+    ]
+
+    filepath = candidates[0]
+    found = False
+    for candidate in candidates:
+      if path.exists(candidate):
+        filepath = candidate
+        Logger.info(f"Found database at: {filepath}")
+        found = True
+        break
+      
+      # Case-insensitive fallback: scan directory for matching filename
+      candidate_dir = path.dirname(candidate)
+      if path.exists(candidate_dir):
+        try:
+          for f in os.listdir(candidate_dir):
+            if f.lower() == filename.lower():
+              filepath = path.join(candidate_dir, f)
+              Logger.info(f"Found database (case-insensitive) at: {filepath}")
+              found = True
+              break
+        except OSError:
+          pass
+      
+      if found:
+        break
+    
+    if not found:
+      Logger.error(f"Could not find {filename} in any of the following locations:")
+      for c in candidates:
+        Logger.error(f" - {c}")
+
+  else:
+    bundle_dir = path.abspath(path.dirname(__file__))
+    filepath = path.join(bundle_dir, '..', '..', 'database', filename)
+
   normpath = path.normpath(filepath)
-  Logger.info(normpath)
+  Logger.info(f"Loading database: {normpath}")
+  
+  # Final check for non-frozen environment case-sensitivity
+  if not path.exists(normpath):
+    directory = path.dirname(normpath)
+    if path.exists(directory):
+      for f in os.listdir(directory):
+        if f.lower() == filename.lower():
+          normpath = path.join(directory, f)
+          Logger.info(f"Resolved case-insensitive path: {normpath}")
+          break
 
   f = open(normpath, 'r', encoding='utf-8')
   reader = csv.reader(f, delimiter=',')

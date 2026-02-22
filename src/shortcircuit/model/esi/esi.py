@@ -4,7 +4,7 @@ import threading
 import uuid
 import webbrowser
 
-import requests
+import httpx
 from shortcircuit.model.logger import Logger
 from shortcircuit import USER_AGENT
 
@@ -59,7 +59,7 @@ class ESI:
         target=self.httpd.serve,
         args=(self.handle_login, ),
       )
-      server_thread.setDaemon(True)
+      server_thread.daemon = True
       server_thread.start()
       self.state = str(uuid.uuid4())
     else:
@@ -95,11 +95,11 @@ class ESI:
       self.sso_timer = threading.Timer(
         int(message['expires_in'][0]), self._logout
       )
-      self.sso_timer.setDaemon(True)
+      self.sso_timer.daemon = True
       self.sso_timer.start()
 
-      r = requests.get(ESI.ENDPOINT_ESI_VERIFY, headers=self._get_headers())
-      if r.status_code == requests.codes.ok:
+      r = httpx.get(ESI.ENDPOINT_ESI_VERIFY, headers=self._get_headers())
+      if r.status_code == httpx.codes.OK:
         data = r.json()
         self.char_id = data['CharacterID']
         self.char_name = data['CharacterName']
@@ -128,17 +128,17 @@ class ESI:
     current_location_name = None
     current_location_id = None
 
-    r = requests.get(
+    r = httpx.get(
       ESI.ENDPOINT_ESI_LOCATION_FORMAT.format(self.char_id),
       headers=self._get_headers()
     )
-    if r.status_code == requests.codes.ok:
+    if r.status_code == httpx.codes.OK:
       current_location_id = r.json()['solar_system_id']
 
-    r = requests.post(
+    r = httpx.post(
       ESI.ENDPOINT_ESI_UNIVERSE_NAMES, json=[str(current_location_id)]
     )
-    if r.status_code == requests.codes.ok:
+    if r.status_code == httpx.codes.OK:
       current_location_name = r.json()[0]['name']
 
     return current_location_name
@@ -148,7 +148,7 @@ class ESI:
       return False
 
     success = False
-    r = requests.post(
+    r = httpx.post(
       '{}?add_to_beginning=false&clear_other_waypoints=true&destination_id={}'.
       format(
         ESI.ENDPOINT_ESI_UI_WAYPOINT,

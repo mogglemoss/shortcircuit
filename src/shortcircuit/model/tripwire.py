@@ -1,10 +1,11 @@
 # tripwire.py
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
-import requests
+import httpx
 from shortcircuit import USER_AGENT
 
 from .evedb import EveDb, WormholeSize, WormholeMassspan, WormholeTimespan
@@ -132,8 +133,8 @@ class Tripwire:
     self.username = username
     self.password = password
     self.url = url
-    self.session_requests = self.login()
     self.chain: TripwireChain = self._empty_chain()
+    self.cookies: Optional[httpx.Cookies] = None
 
   @staticmethod
   def _empty_chain() -> TripwireChain:
@@ -150,11 +151,10 @@ class Tripwire:
       'discord_integration': False,
     }
 
-  def login(self):
+  async def _login_async(self, client: httpx.AsyncClient) -> bool:
     Logger.debug('Logging in...')
 
     login_url = '{}/login.php'.format(self.url)
-    session_requests = requests.session()
 
     payload = {
       'username': self.username,
@@ -165,40 +165,26 @@ class Tripwire:
       'Referer': login_url,
       'User-Agent': USER_AGENT,
     }
-    proxies: Dict[str, str] = {}
-    proxy = Configuration.settings.value('proxy')
-    if proxy:
-      proxies = {
-        'http': str(proxy),
-        'https': str(proxy),
-      }
 
     try:
-      result = session_requests.post(
+      result = await client.post(
         login_url,
         data=payload,
         headers=headers,
-        proxies=proxies,
+        follow_redirects=True,
       )
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
       Logger.error('Exception raised while trying to login')
       Logger.error(e)
-      return None
+      return False
 
     if result.status_code != 200:
       Logger.error('Result code is not 200')
       Logger.error(result)
-      return None
+      return False
 
-    response = session_requests
-    return response
-
-  def fetch_api_refresh(self, system_id="30000142") -> Optional[RawTripwireChain]:
+  async def _fetch_api_refresh_async(self, client: httpx.AsyncClient, system_id="30000142") -> Optional[RawTripwireChain]:
     Logger.debug('Getting {}...'.format(system_id))
-
-    if not self.session_requests:
-      return None
-
     refresh_url = '{}/refresh.php'.format(self.url)
     payload = {
       'mode': 'init',
@@ -208,22 +194,14 @@ class Tripwire:
       'Referer': refresh_url,
       'User-Agent': USER_AGENT,
     }
-    proxies: Dict[str, str] = {}
-    proxy = Configuration.settings.value('proxy')
-    if proxy:
-      proxies = {
-        'http': str(proxy),
-        'https': str(proxy),
-      }
 
     try:
-      result = self.session_requests.get(
+      result = await client.get(
         refresh_url,
         params=payload,
         headers=headers,
-        proxies=proxies,
       )
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
       Logger.error('Exception raised while trying to refresh')
       Logger.error(e)
       return None
@@ -258,22 +236,47 @@ class Tripwire:
       'discord_integration': raw_chain['discord_integration'],
     }
 
+  async def _get_chain_task(self, system_id: str) -> bool:
+    proxies = {}
+    proxy_setting = Configuration.settings.value('proxy')
+    if proxy_setting:
+      proxies = {
+        'http://': str(proxy_setting),
+        'https://': str(proxy_setting),
+      }
+
+    async with httpx.AsyncClient(proxies=proxies, verify=True) as client:
+      # Restore cookies if we have them
+      if self.cookies:
+        client.cookies = self.cookies
+
+      # Try to fetch
+      raw_chain = await self._fetch_api_refresh_async(client, system_id)
+
+      # If fetch failed (likely not logged in or session expired), try login
+      if raw_chain is None:
+        if await self._login_async(client):
+          # Save cookies for next time
+          self.cookies = client.cookies
+          # Retry fetch
+          raw_chain = await self._fetch_api_refresh_async(client, system_id)
+
+      if raw_chain:
+        self.chain = self._normalize_chain(raw_chain)
+        return True
+
+      return False
+
   def get_chain(self, system_id="30000142") -> bool:
     """
     Fetch and normalize the Tripwire chain data.
-    
+
     Updates self.chain only if fetch is successful, preserving existing data on failure.
-    
+
     :param system_id: str Numerical solar system ID
     :return: True if fetch was successful, False on connection/auth failure
     """
-    raw_chain = self.fetch_api_refresh(system_id)
-    
-    if raw_chain is None:
-      return False
-    
-    self.chain = self._normalize_chain(raw_chain)
-    return True
+    return asyncio.run(self._get_chain_task(system_id))
 
   def _get_parent_sibling_keys(self, wormhole: TripwireWormhole) -> tuple[SignatureKey, SignatureKey]:
     """

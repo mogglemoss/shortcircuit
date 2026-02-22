@@ -2,8 +2,7 @@
 
 import threading
 
-from PySide2 import QtCore
-
+from PySide6 import QtCore
 from .esi.esi import ESI
 
 
@@ -28,7 +27,7 @@ class ESIProcessor(QtCore.QObject):
 
   def get_location(self):
     server_thread = threading.Thread(target=self._get_location)
-    server_thread.setDaemon(True)
+    server_thread.daemon = True
     server_thread.start()
 
   def _get_location(self):
@@ -41,7 +40,7 @@ class ESIProcessor(QtCore.QObject):
       target=self._set_destination,
       args=(sys_id, ),
     )
-    server_thread.setDaemon(True)
+    server_thread.daemon = True
     server_thread.start()
 
   # TODO properly type this

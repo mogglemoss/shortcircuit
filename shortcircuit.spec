@@ -2,37 +2,49 @@
 
 
 a = Analysis(
-    ['src\\main.py'],
-    pathex=['build\\libs'],
+    ['/Users/scott/Documents/Devlopment Projects/Eve Online/shortcircuit/src/main.py'],
+    pathex=['/Users/scott/Documents/Devlopment Projects/Eve Online/shortcircuit/src'],
     binaries=[],
-    datas=[('src\\database\\*', 'database')],
-    hiddenimports=[],
+    datas=[('/Users/scott/Documents/Devlopment Projects/Eve Online/shortcircuit/src/database', 'database')],
+    hiddenimports=['shortcircuit', 'shortcircuit.app', 'shortcircuit.model', 'shortcircuit.model.esi', 'shortcircuit.model.esi.esi', 'shortcircuit.model.esi.server', 'shortcircuit.model.esi_processor', 'shortcircuit.model.evedb', 'shortcircuit.model.evescout', 'shortcircuit.model.logger', 'shortcircuit.model.navigation', 'shortcircuit.model.navprocessor', 'shortcircuit.model.solarmap', 'shortcircuit.model.test_evedb', 'shortcircuit.model.test_solarmap', 'shortcircuit.model.test_tripwire', 'shortcircuit.model.test_tripwire_gate', 'shortcircuit.model.tripwire', 'shortcircuit.model.utility', 'shortcircuit.model.utility.configuration', 'shortcircuit.model.utility.singleton', 'shortcircuit.model.versioncheck', 'shortcircuit.resources', 'httpx', 'dateutil', 'semver', 'qdarktheme', 'typing_extensions', 'appdirs'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
+    optimize=0,
 )
 pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='shortcircuit',
+    exclude_binaries=True,
+    name='ShortCircuit',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['resources\\images\\app_icon.ico'],
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='ShortCircuit',
+)
+app = BUNDLE(
+    coll,
+    name='ShortCircuit.app',
+    icon=None,
+    bundle_identifier=None,
 )

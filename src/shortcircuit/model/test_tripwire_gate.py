@@ -5,7 +5,7 @@ recognized and added to the solar map for route calculations.
 """
 
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 from shortcircuit.model.tripwire import Tripwire
 from shortcircuit.model.solarmap import SolarMap, ConnectionType
 from shortcircuit.model.evedb import EveDb, WormholeSize, WormholeTimespan, WormholeMassspan
@@ -13,12 +13,8 @@ from shortcircuit.model.evedb import EveDb, WormholeSize, WormholeTimespan, Worm
 
 def test_gate_wormhole_is_processed():
     """Test that GATE type wormholes are not skipped and are processed as stable connections"""
-    # Create a Tripwire instance and mock the login
-    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-        mock_session = Mock()
-        mock_session.post.return_value.status_code = 200
-        mock_requests.session.return_value = mock_session
-        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    # Create a Tripwire instance
+    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Create a mock chain with a GATE type wormhole
     current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -91,11 +87,7 @@ def test_gate_wormhole_is_processed():
 
 def test_regular_wormhole_respects_life_and_mass():
     """Test that regular wormholes still respect their life and mass properties"""
-    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-        mock_session = Mock()
-        mock_session.post.return_value.status_code = 200
-        mock_requests.session.return_value = mock_session
-        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Create a mock chain with a regular critical wormhole
     current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -209,11 +201,7 @@ def test_gate_wormhole_in_route_calculation():
 
 def test_connection_failure_returns_negative_one():
     """Test that connection/auth failures return -1 for proper UI error display"""
-    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-        mock_session = Mock()
-        mock_session.post.return_value.status_code = 200
-        mock_requests.session.return_value = mock_session
-        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Mock get_chain to return False (connection failure)
     solar_map = Mock(spec=SolarMap)
@@ -228,11 +216,7 @@ def test_connection_failure_returns_negative_one():
 
 def test_connection_failure_preserves_existing_chain():
     """Test that connection failures preserve existing navigation data"""
-    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-        mock_session = Mock()
-        mock_session.post.return_value.status_code = 200
-        mock_requests.session.return_value = mock_session
-        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Set up initial chain data
     current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -262,8 +246,9 @@ def test_connection_failure_preserves_existing_chain():
     }
     tripwire.chain = initial_chain
     
-    # Mock fetch_api_refresh to return None (connection failure)
-    with patch.object(tripwire, 'fetch_api_refresh', return_value=None):
+    # Mock _get_chain_task to return False (connection failure)
+    with patch.object(tripwire, '_get_chain_task', new_callable=AsyncMock) as mock_task:
+        mock_task.return_value = False
         result = tripwire.get_chain()
     
     # Should return False on failure

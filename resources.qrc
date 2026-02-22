@@ -1,0 +1,18 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>images/app_icon.png</file>
+        <file>images/app_icon_small.png</file>
+        <file>images/author.png</file>
+        <file>images/banner.png</file>
+        <file>images/config_icon.png</file>
+        <file>images/crest_banner.png</file>
+        <file>images/crest_logo.png</file>
+        <file>images/delete_icon.png</file>
+        <file>images/eve_logo.png</file>
+        <file>images/evescout.png</file>
+        <file>images/tripwire_banner.png</file>
+        <file>images/tripwire_logo.png</file>
+        <file>images/wh_icon.png</file>
+    </qresource>
+</RCC>

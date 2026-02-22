@@ -1,7 +1,7 @@
 # Short Circuit
 
 ## Description
-Short Circuit (previously known as Pathfinder) is a desktop application which is able to find the shortest path between solar systems (including wormholes) using data retrieved from Eve SDE and 3rd party wormhole mapping tools. The application is able to run on all systems where Python 3.10 and PySide2 are supported.
+Short Circuit (previously known as Pathfinder) is a desktop application which is able to find the shortest path between solar systems (including wormholes) using data retrieved from Eve SDE and 3rd party wormhole mapping tools. The application is able to run on all systems where Python 3.10 and PySide6 are supported.
 
 **Features:**
 
@@ -14,10 +14,9 @@ Short Circuit (previously known as Pathfinder) is a desktop application which is
 
 ## Usage
 ```bash
-$ pip install pipenv
-$ mkdir .venv
-$ pipenv install
-$ pipenv shell
+$ pip install uv
+$ uv sync
+$ source .venv/bin/activate
 $ cd src
 $ python main.py
 ```

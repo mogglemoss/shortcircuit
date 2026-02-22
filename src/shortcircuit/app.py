@@ -7,18 +7,17 @@ import time
 from functools import partial
 from typing import Dict, List, TypedDict, Union
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
+import qdarktheme
 
 from . import __appname__, __date__ as last_update, __version__
+import shortcircuit.resources
 from .model.esi_processor import ESIProcessor
 from .model.evedb import EveDb, Restrictions, SpaceType, WormholeSize
 from .model.logger import Logger
 from .model.navigation import Navigation
 from .model.navprocessor import NavProcessor
 from .model.versioncheck import VersionCheck
-from .view.gui_about import Ui_AboutDialog
-from .view.gui_main import Ui_MainWindow
-from .view.gui_tripwire import Ui_TripwireDialog
 
 
 class StateEVEConnection(TypedDict):
@@ -38,7 +37,7 @@ class StateTripwire(TypedDict):
   error: Union[str, None]
 
 
-class TripwireDialog(QtWidgets.QDialog, Ui_TripwireDialog):
+class TripwireDialog(QtWidgets.QDialog):
   """
   Tripwire Configuration Window
   """
@@ -53,13 +52,49 @@ class TripwireDialog(QtWidgets.QDialog, Ui_TripwireDialog):
     parent=None,
   ):
     super().__init__(parent)
-    self.setupUi(self)
-    self.lineEdit_url.setText(trip_url)
-    self.lineEdit_user.setText(trip_user)
-    self.lineEdit_pass.setText(trip_pass)
-    self.lineEdit_proxy.setText(proxy)
+    self.setWindowTitle("Tripwire Configuration")
+    self.setMinimumWidth(350)
+
+    layout = QtWidgets.QVBoxLayout(self)
+
+    # Form
+    form_layout = QtWidgets.QFormLayout()
+
+    self.lineEdit_url = QtWidgets.QLineEdit(trip_url)
+    form_layout.addRow("URL:", self.lineEdit_url)
+
+    self.lineEdit_user = QtWidgets.QLineEdit(trip_user)
+    form_layout.addRow("Username:", self.lineEdit_user)
+
+    self.lineEdit_pass = QtWidgets.QLineEdit(trip_pass)
+    self.lineEdit_pass.setEchoMode(QtWidgets.QLineEdit.Password)
+    form_layout.addRow("Password:", self.lineEdit_pass)
+
+    self.lineEdit_proxy = QtWidgets.QLineEdit(proxy)
+    self.lineEdit_proxy.setPlaceholderText("http://user:pass@host:port")
+    form_layout.addRow("Proxy:", self.lineEdit_proxy)
+
+    layout.addLayout(form_layout)
+
+    # Eve-Scout
+    self.checkBox_evescout = QtWidgets.QCheckBox("Enable Eve-Scout (Thera connections)")
     self.checkBox_evescout.setChecked(evescout_enabled)
+    layout.addWidget(self.checkBox_evescout)
+
+    # Logo / Link
+    self.label_evescout_logo = QtWidgets.QLabel("Eve-Scout")
+    self.label_evescout_logo.setAlignment(QtCore.Qt.AlignCenter)
+    self.label_evescout_logo.setCursor(QtCore.Qt.PointingHandCursor)
     self.label_evescout_logo.mouseReleaseEvent = TripwireDialog.logo_click
+    layout.addWidget(self.label_evescout_logo)
+
+    # Buttons
+    button_box = QtWidgets.QDialogButtonBox(
+      QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
+    )
+    button_box.accepted.connect(self.accept)
+    button_box.rejected.connect(self.reject)
+    layout.addWidget(button_box)
 
   @staticmethod
   def logo_click(event):
@@ -67,14 +102,27 @@ class TripwireDialog(QtWidgets.QDialog, Ui_TripwireDialog):
     QtGui.QDesktopServices.openUrl(QtCore.QUrl("https://www.eve-scout.com/"))
 
 
-class AboutDialog(QtWidgets.QDialog, Ui_AboutDialog):
+class AboutDialog(QtWidgets.QDialog):
   """
-  Tripwire Configuration Window
+  About Dialog
   """
 
   def __init__(self, parent=None):
     super().__init__(parent)
-    self.setupUi(self)
+    self.setWindowTitle("About Short Circuit")
+    self.setFixedSize(400, 380)
+
+    layout = QtWidgets.QVBoxLayout(self)
+
+    # Header
+    header = QtWidgets.QHBoxLayout()
+
+    self.label_title = QtWidgets.QLabel()
+    font = self.label_title.font()
+    font.setPointSize(12)
+    font.setBold(True)
+    self.label_title.setFont(font)
+    self.label_title.setAlignment(QtCore.Qt.AlignCenter)
     self.label_title.setText(
       '{} v{} ({})'.format(
         __appname__,
@@ -82,9 +130,48 @@ class AboutDialog(QtWidgets.QDialog, Ui_AboutDialog):
         last_update,
       )
     )
-    # noinspection PyUnresolvedReferences
-    self.pushButton_o7.clicked.connect(self.close)
+    header.addWidget(self.label_title)
+
+    self.label_icon = QtWidgets.QLabel()
+    self.label_icon.setPixmap(QtGui.QPixmap(":images/app_icon_small.png"))
+    self.label_icon.setCursor(QtCore.Qt.PointingHandCursor)
     self.label_icon.mouseReleaseEvent = AboutDialog.icon_click
+    header.addWidget(self.label_icon)
+
+    layout.addLayout(header)
+
+    # Text
+    self.label_2 = QtWidgets.QLabel()
+    self.label_2.setWordWrap(True)
+    self.label_2.setText(
+      "<html><head/><body>"
+      "<p>Short Circuit is an open-source application able to find the shortest path between solar systems (wormholes included) using the Eve SDE and wormhole mapping tools such as Tripwire. Short Circuit can run on all platforms where Python and PySide are supported. </p>"
+      "<p>Original author – Valtyr Farshield. </p>"
+      "<p><span style=\" font-weight:600;\">Maintainer list</span></p>"
+      "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
+      "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Rustam @SecondFry Gubaydullin (Lenai Chelien).</li></ul>"
+      "<p><span style=\" font-weight:600;\">Credits</span></p>"
+      "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
+      "<li style=\" margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Daimian Mercer (Tripwire). </li>"
+      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Dreae (PyCrest). </li>"
+      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">pyfa-org (PyFa). </li>"
+      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">EvE-Scout. </li>"
+      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Sharps. </li>"
+      "<li style=\" margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">choo t. </li>"
+      "</ul></body></html>"
+    )
+    self.label_2.setAlignment(QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+    layout.addWidget(self.label_2)
+
+    layout.addStretch()
+
+    # Button
+    btn_layout = QtWidgets.QHBoxLayout()
+    btn_layout.addStretch()
+    self.pushButton_o7 = QtWidgets.QPushButton("  Fly safe o7  ")
+    self.pushButton_o7.clicked.connect(self.close)
+    btn_layout.addWidget(self.pushButton_o7)
+    layout.addLayout(btn_layout)
 
   @staticmethod
   def icon_click(event):
@@ -100,7 +187,24 @@ class MessageType(Enum):
   OK = 2
 
 
-class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+class RouteWorker(QtCore.QObject):
+  finished = QtCore.Signal(list, str)
+
+  def __init__(self, nav):
+    super().__init__()
+    self.nav = nav
+
+  @QtCore.Slot(int, int)
+  def process(self, source_id, dest_id):
+    try:
+      result = self.nav.route(source_id, dest_id)
+      self.finished.emit(result[0], result[1])
+    except Exception as e:
+      Logger.error("Routing exception: {}".format(e))
+      self.finished.emit([], "")
+
+
+class MainWindow(QtWidgets.QMainWindow):
   """
   Main Window GUI
   """
@@ -116,9 +220,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     return ret
 
+  start_route_calculation = QtCore.Signal(int, int)
+
   def __init__(self, parent=None):
     super().__init__(parent)
-    self.setupUi(self)
     self.settings = QtCore.QSettings(
       QtCore.QSettings.IniFormat,
       QtCore.QSettings.UserScope,
@@ -138,6 +243,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     })
     self.state_tripwire = StateTripwire({"connections": 0, "error": None})
 
+    # Create UI Elements (replaces setupUi)
+    self._create_ui_elements()
+
     # Table configuration
     self.tableWidget_path.setColumnCount(5)
     self.tableWidget_path.setHorizontalHeaderLabels([
@@ -151,15 +259,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
     self.tableWidget_path.horizontalHeader().setStretchLastSection(True)
 
-    # Read stored settings
-    self.read_settings()
-
     # Read resources
     self.eve_db = EveDb()
     self.nav = Navigation(self, self.eve_db)
 
     # Additional GUI setup
     self.additional_gui_setup()
+
+    # Apply Sidebar Layout
+    self._setup_sidebar_layout()
+
+    # Read stored settings
+    self.read_settings()
 
     self.status_tripwire = QtWidgets.QLabel()
     self.status_tripwire.setContentsMargins(5, 0, 5, 0)
@@ -200,6 +311,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # noinspection PyUnresolvedReferences
     self.version_thread.started.connect(self.version_check.process)
 
+    # Route thread
+    self.route_thread = QtCore.QThread()
+    Logger.register_thread(self.route_thread, 'route_thread')
+    self.route_worker = RouteWorker(self.nav)
+    self.route_worker.moveToThread(self.route_thread)
+    self.route_worker.finished.connect(self.route_result_handler)
+    self.start_route_calculation.connect(self.route_worker.process)
+    self.route_thread.start()
+
     # ESI
     self.eve_connected = False
     self.esip = ESIProcessor()
@@ -211,6 +331,260 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Start version check
     self.version_thread.start()
 
+  def _create_ui_elements(self):
+    """
+    Instantiates all UI widgets programmatically, replacing the old .ui file.
+    """
+    # Navigation
+    self.pushButton_eve_login = QtWidgets.QPushButton("Log in with EvE")
+    self.pushButton_player_location = QtWidgets.QPushButton("Get player location")
+    self.pushButton_player_location.setEnabled(False)
+
+    self.lineEdit_set_dest = QtWidgets.QLineEdit()
+    self.lineEdit_set_dest.setPlaceholderText("System name")
+    self.pushButton_set_dest = QtWidgets.QPushButton("Set destination")
+    self.pushButton_set_dest.setEnabled(False)
+
+    self.lineEdit_source = QtWidgets.QLineEdit()
+    self.lineEdit_source.setPlaceholderText("Source system")
+    self.lineEdit_destination = QtWidgets.QLineEdit()
+    self.lineEdit_destination.setPlaceholderText("Destination system")
+
+    self.pushButton_find_path = QtWidgets.QPushButton("Find path")
+    self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
+
+    # Tripwire
+    self.pushButton_trip_config = QtWidgets.QPushButton("Config")
+    self.pushButton_trip_get = QtWidgets.QPushButton("Get Chain")
+    self.pushButton_trip_get.setEnabled(False)
+
+    # Restrictions
+    self.comboBox_size = QtWidgets.QComboBox()
+    self.comboBox_size.addItems([
+      "Frigate (S)",
+      "Cruiser (M)",
+      "Battleship (L)",
+      "Capital (XL)",
+      "No Wormholes"
+    ])
+
+    self.checkBox_eol = QtWidgets.QCheckBox("Ignore EOL")
+    self.checkBox_masscrit = QtWidgets.QCheckBox("Ignore critical mass")
+    self.checkBox_ignore_old = QtWidgets.QCheckBox("Ignore aged connections")
+    self.doubleSpinBox_hours = QtWidgets.QDoubleSpinBox()
+    self.doubleSpinBox_hours.setRange(0.0, 48.0)
+    self.doubleSpinBox_hours.setValue(16.0)
+    self.doubleSpinBox_hours.setSingleStep(0.5)
+
+    # Avoidance
+    self.lineEdit_system_avoid_name = QtWidgets.QLineEdit()
+    self.lineEdit_system_avoid_name.setPlaceholderText("System name")
+    self.pushButton_system_avoid_add = QtWidgets.QPushButton("Add")
+
+    self.lineEdit_region_avoid_name = QtWidgets.QLineEdit()
+    self.lineEdit_region_avoid_name.setPlaceholderText("Region name")
+    self.pushButton_region_avoid_add = QtWidgets.QPushButton("Add")
+
+    self.listWidget_avoid = QtWidgets.QListWidget()
+    self.pushButton_avoid_delete = QtWidgets.QPushButton("Delete")
+    self.pushButton_avoid_clear = QtWidgets.QPushButton("Clear")
+
+    # Content
+    self.label_status = QtWidgets.QLabel("")
+    self.label_status.setAlignment(QtCore.Qt.AlignCenter)
+    self.tableWidget_path = QtWidgets.QTableWidget()
+    self.lineEdit_short_format = QtWidgets.QLineEdit()
+    self.lineEdit_short_format.setReadOnly(True)
+    self.lineEdit_short_format.setPlaceholderText("Short format route (click to copy)")
+
+  def _setup_sidebar_layout(self):
+    """
+    Restructures the existing UI widgets into a Sidebar layout.
+    """
+    # Create new central widget
+    new_central = QtWidgets.QWidget()
+    main_layout = QtWidgets.QHBoxLayout(new_central)
+    main_layout.setContentsMargins(0, 0, 0, 0)
+    main_layout.setSpacing(0)
+
+    # --- Sidebar ---
+    sidebar = QtWidgets.QWidget()
+    sidebar.setObjectName("sidebar")
+    sidebar.setFixedWidth(300)
+    sidebar_layout = QtWidgets.QVBoxLayout(sidebar)
+    sidebar_layout.setContentsMargins(10, 10, 10, 10)
+    sidebar_layout.setSpacing(10)
+
+    # 1. Navigation Group
+    sidebar_layout.addWidget(self._setup_navigation_group())
+
+    # 2. Tripwire Group
+    sidebar_layout.addWidget(self._setup_tripwire_group())
+
+    # 3. Restrictions Group
+    sidebar_layout.addWidget(self._setup_restrictions_group())
+
+    # 4. Security & Avoidance (Existing GroupBoxes)
+    sidebar_layout.addWidget(self._setup_security_group())
+    sidebar_layout.addWidget(self._setup_avoidance_group())
+
+    sidebar_layout.addStretch()
+
+    # --- Content Area ---
+    content = QtWidgets.QWidget()
+    content_layout = QtWidgets.QVBoxLayout(content)
+    content_layout.setContentsMargins(10, 10, 10, 10)
+
+    content_layout.addWidget(self.label_status)
+    content_layout.addWidget(self.tableWidget_path)
+
+    row_bottom = QtWidgets.QHBoxLayout()
+    row_bottom.addWidget(self.lineEdit_short_format)
+
+    self.pushButton_copy_table = QtWidgets.QPushButton("Copy Table")
+    self.pushButton_copy_table.setToolTip("Copy full route table to clipboard")
+    self.pushButton_copy_table.clicked.connect(self.copy_table_to_clipboard)
+    row_bottom.addWidget(self.pushButton_copy_table)
+
+    content_layout.addLayout(row_bottom)
+
+    main_layout.addWidget(sidebar)
+    main_layout.addWidget(content)
+    self.setCentralWidget(new_central)
+
+  def _setup_security_group(self):
+    group = QtWidgets.QGroupBox("Security Prioritization")
+    group.setCheckable(True)
+    layout = QtWidgets.QVBoxLayout(group)
+    layout.setSpacing(5)
+
+    def create_slider(label_text, attr_name):
+      row = QtWidgets.QHBoxLayout()
+
+      lbl = QtWidgets.QLabel(label_text)
+      lbl.setFixedWidth(30)
+
+      slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+      slider.setRange(1, 100)
+
+      val_lbl = QtWidgets.QLabel("1")
+      val_lbl.setFixedWidth(25)
+      val_lbl.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+      # Update label when slider changes
+      slider.valueChanged.connect(lambda v: val_lbl.setText(str(v)))
+
+      row.addWidget(lbl)
+      row.addWidget(slider)
+      row.addWidget(val_lbl)
+
+      layout.addLayout(row)
+
+      setattr(self, attr_name, slider)
+      setattr(self, attr_name + "_label", val_lbl)
+
+    create_slider("HS", "slider_prio_hs")
+    create_slider("LS", "slider_prio_ls")
+    create_slider("NS", "slider_prio_ns")
+    create_slider("WH", "slider_prio_wh")
+
+    # Replace the old groupbox reference so isChecked() works on the new one
+    self.groupBox_security = group
+    return group
+
+  def _setup_avoidance_group(self):
+    group = QtWidgets.QGroupBox("Avoidance List")
+    group.setCheckable(True)
+    # Preserve checked state if possible
+    if hasattr(self, 'groupBox_avoidance'):
+      group.setChecked(self.groupBox_avoidance.isChecked())
+
+    layout = QtWidgets.QVBoxLayout(group)
+    layout.setSpacing(5)
+
+    # System Row
+    row_sys = QtWidgets.QHBoxLayout()
+    row_sys.addWidget(self.lineEdit_system_avoid_name)
+    row_sys.addWidget(self.pushButton_system_avoid_add)
+    layout.addLayout(row_sys)
+
+    # Region Row
+    row_reg = QtWidgets.QHBoxLayout()
+    row_reg.addWidget(self.lineEdit_region_avoid_name)
+    row_reg.addWidget(self.pushButton_region_avoid_add)
+    layout.addLayout(row_reg)
+
+    # List
+    layout.addWidget(self.listWidget_avoid)
+
+    # Actions
+    row_act = QtWidgets.QHBoxLayout()
+    row_act.addWidget(self.pushButton_avoid_delete)
+    row_act.addWidget(self.pushButton_avoid_clear)
+    layout.addLayout(row_act)
+
+    # Replace the old groupbox reference so settings work on the new one
+    self.groupBox_avoidance = group
+    return group
+
+  def _setup_navigation_group(self):
+    group = QtWidgets.QGroupBox("Navigation")
+    layout = QtWidgets.QVBoxLayout(group)
+
+    layout.addWidget(self.pushButton_eve_login)
+    layout.addWidget(self.pushButton_player_location)
+
+    row_dest = QtWidgets.QHBoxLayout()
+    row_dest.addWidget(self.lineEdit_set_dest)
+    row_dest.addWidget(self.pushButton_set_dest)
+    layout.addLayout(row_dest)
+
+    layout.addWidget(QtWidgets.QLabel("Source:"))
+    layout.addWidget(self.lineEdit_source)
+    layout.addWidget(QtWidgets.QLabel("Destination:"))
+    layout.addWidget(self.lineEdit_destination)
+
+    row_actions = QtWidgets.QHBoxLayout()
+    row_actions.addWidget(self.pushButton_find_path)
+    row_actions.addWidget(self.pushButton_reset)
+    layout.addLayout(row_actions)
+
+    self.progressBar_route = QtWidgets.QProgressBar()
+    self.progressBar_route.setRange(0, 0)
+    self.progressBar_route.setTextVisible(False)
+    self.progressBar_route.setVisible(False)
+    self.progressBar_route.setFixedHeight(5)
+    layout.addWidget(self.progressBar_route)
+
+    return group
+
+  def _setup_tripwire_group(self):
+    group = QtWidgets.QGroupBox("Tripwire")
+    layout = QtWidgets.QHBoxLayout(group)
+    layout.addWidget(self.pushButton_trip_config)
+    layout.addWidget(self.pushButton_trip_get)
+    return group
+
+  def _setup_restrictions_group(self):
+    group = QtWidgets.QGroupBox("Restrictions")
+    layout = QtWidgets.QVBoxLayout(group)
+
+    row_wh = QtWidgets.QHBoxLayout()
+    row_wh.addWidget(QtWidgets.QLabel("Size:"))
+    row_wh.addWidget(self.comboBox_size)
+    layout.addLayout(row_wh)
+
+    layout.addWidget(self.checkBox_eol)
+    layout.addWidget(self.checkBox_masscrit)
+
+    row_age = QtWidgets.QHBoxLayout()
+    row_age.addWidget(self.checkBox_ignore_old)
+    row_age.addWidget(self.doubleSpinBox_hours)
+    row_age.addWidget(QtWidgets.QLabel("h"))
+    layout.addLayout(row_age)
+
+    return group
+
   # noinspection PyUnresolvedReferences
   def additional_gui_setup(self):
     # Additional GUI setup
@@ -221,9 +595,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         last_update,
       )
     )
-    # FIXME(secondfry): removed heading
-    # self.banner_image.mouseReleaseEvent = MainWindow.banner_click
-    # self.banner_button.mouseReleaseEvent = MainWindow.banner_click
     self._path_message("", MessageType.OK)
     self._avoid_message("", MessageType.OK)
     self.lineEdit_source.setFocus()
@@ -368,10 +739,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     self.groupBox_security.setChecked(
       self.settings.value("security_enabled", "false") == "true"
     )
-    self.spinBox_prio_hs.setValue(int(self.settings.value("prio_hs", "1")))
-    self.spinBox_prio_ls.setValue(int(self.settings.value("prio_ls", "1")))
-    self.spinBox_prio_ns.setValue(int(self.settings.value("prio_ns", "1")))
-    self.spinBox_prio_wh.setValue(int(self.settings.value("prio_wh", "1")))
+
+    def set_slider(attr, val):
+      slider = getattr(self, attr)
+      slider.setValue(int(val))
+      # Manually update label in case value didn't change from default
+      getattr(self, attr + "_label").setText(str(slider.value()))
+
+    set_slider("slider_prio_hs", self.settings.value("prio_hs", "1"))
+    set_slider("slider_prio_ls", self.settings.value("prio_ls", "1"))
+    set_slider("slider_prio_ns", self.settings.value("prio_ns", "1"))
+    set_slider("slider_prio_wh", self.settings.value("prio_wh", "1"))
 
     self.settings.endGroup()
 
@@ -428,10 +806,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     self.settings.setValue(
       "security_enabled", self.groupBox_security.isChecked()
     )
-    self.settings.setValue("prio_hs", self.spinBox_prio_hs.value())
-    self.settings.setValue("prio_ls", self.spinBox_prio_ls.value())
-    self.settings.setValue("prio_ns", self.spinBox_prio_ns.value())
-    self.settings.setValue("prio_wh", self.spinBox_prio_wh.value())
+    self.settings.setValue("prio_hs", self.slider_prio_hs.value())
+    self.settings.setValue("prio_ls", self.slider_prio_ls.value())
+    self.settings.setValue("prio_ns", self.slider_prio_ns.value())
+    self.settings.setValue("prio_wh", self.slider_prio_wh.value())
 
     self.settings.endGroup()
 
@@ -439,7 +817,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     msg_box = QtWidgets.QMessageBox(self)
     msg_box.setWindowTitle(title)
     msg_box.setText(text)
-    return msg_box.exec_()
+    return msg_box.exec()
 
   @staticmethod
   def _label_message(label, message, message_type):
@@ -507,12 +885,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
   @staticmethod
   def get_system_class_color(sclass):
     return {
-      'HS': QtGui.QColor(223, 240, 216),
-      'LS': QtGui.QColor(252, 248, 227),
-      'NS': QtGui.QColor(242, 222, 222),
-      'WH': QtGui.QColor(210, 226, 242),
-      '▲': QtGui.QColor(242, 212, 212),
-    }.get(sclass, QtGui.QColor(220, 220, 220))
+      'HS': QtGui.QColor(40, 70, 40),
+      'LS': QtGui.QColor(70, 60, 20),
+      'NS': QtGui.QColor(70, 30, 30),
+      'WH': QtGui.QColor(30, 50, 70),
+      '▲': QtGui.QColor(70, 30, 30),
+    }.get(sclass, QtGui.QColor(50, 50, 50))
 
   def add_data_to_table(self, route):
     self.tableWidget_path.setRowCount(len(route))
@@ -580,10 +958,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     }
 
     if self.groupBox_security.isChecked():
-      security_prio[SpaceType.HS] = self.spinBox_prio_hs.value()
-      security_prio[SpaceType.LS] = self.spinBox_prio_ls.value()
-      security_prio[SpaceType.NS] = self.spinBox_prio_ns.value()
-      security_prio[SpaceType.WH] = self.spinBox_prio_wh.value()
+      security_prio[SpaceType.HS] = self.slider_prio_hs.value()
+      security_prio[SpaceType.LS] = self.slider_prio_ls.value()
+      security_prio[SpaceType.NS] = self.slider_prio_ns.value()
+      security_prio[SpaceType.WH] = self.slider_prio_wh.value()
 
     return security_prio
 
@@ -648,10 +1026,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
       self._path_message(error_msg, MessageType.ERROR)
       return
 
-    [route, short_format] = self.nav.route(
+    self.pushButton_find_path.setEnabled(False)
+    self._path_message("Calculating route...", MessageType.INFO)
+    self.progressBar_route.setVisible(True)
+    self.start_route_calculation.emit(
       self.eve_db.name2id(source_sys_name),
       self.eve_db.name2id(dest_sys_name),
     )
+
+  @QtCore.Slot(list, str)
+  def route_result_handler(self, route, short_format):
+    self.pushButton_find_path.setEnabled(True)
+    self.progressBar_route.setVisible(False)
 
     if not route:
       self._clear_results()
@@ -673,11 +1059,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     self.add_data_to_table(route)
     self.lineEdit_short_format.setText(short_format)
 
-  @staticmethod
-  def banner_click(event):
-    event.accept()
-    AboutDialog().exec_()
-
   def short_format_click(self, event):
     event.accept()
     if not self.lineEdit_short_format.text():
@@ -685,6 +1066,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     self.lineEdit_short_format.selectAll()
     self.lineEdit_short_format.copy()
     self.statusBar().showMessage("Copied travel info to clipboard!", 5000)
+
+  @QtCore.Slot()
+  def copy_table_to_clipboard(self):
+    if self.tableWidget_path.rowCount() == 0:
+      self.statusBar().showMessage("No route to copy!", 3000)
+      return
+
+    text_data = []
+    headers = []
+    for col in range(self.tableWidget_path.columnCount()):
+      item = self.tableWidget_path.horizontalHeaderItem(col)
+      headers.append(item.text() if item else "")
+    text_data.append("\t".join(headers))
+
+    for row in range(self.tableWidget_path.rowCount()):
+      row_data = []
+      for col in range(self.tableWidget_path.columnCount()):
+        item = self.tableWidget_path.item(row, col)
+        row_data.append(item.text() if item else "")
+      text_data.append("\t".join(row_data))
+
+    clipboard = QtGui.QGuiApplication.clipboard()
+    clipboard.setText("\n".join(text_data))
+    self.statusBar().showMessage("Route table copied to clipboard!", 5000)
 
   def _status_eve_connection_update(self):
     if self.state_eve_connection["connected"]:
@@ -842,7 +1247,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
       self.state_evescout["enabled"],
     )
 
-    if not tripwire_dialog.exec_():
+    if not tripwire_dialog.exec():
       return
 
     self.tripwire_url = tripwire_dialog.lineEdit_url.text()
@@ -892,7 +1297,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
       QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
     )
     msg_box.setDefaultButton(QtWidgets.QMessageBox.No)
-    ret = msg_box.exec_()
+    ret = msg_box.exec()
 
     if ret == QtWidgets.QMessageBox.Yes:
       self.nav.reset_chain()
@@ -919,7 +1324,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
   def _table_style(self, red_value, green_value, blue_value):
     self.tableWidget_path.setStyleSheet(
-      "selection-color: black; selection-background-color: rgb({}, {}, {});".
+      "selection-color: white; selection-background-color: rgb({}, {}, {});".
       format(
         red_value,
         green_value,
@@ -933,13 +1338,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     if selection:
       sys_class = selection[1].text()
       if sys_class == "HS":
-        self._table_style(193, 210, 186)
+        self._table_style(60, 90, 60)
       elif sys_class == "LS":
-        self._table_style(222, 218, 197)
+        self._table_style(90, 80, 40)
       elif sys_class == "NS":
-        self._table_style(212, 192, 192)
+        self._table_style(90, 50, 50)
       else:
-        self._table_style(180, 196, 212)
+        self._table_style(50, 70, 90)
 
       self.lineEdit_set_dest.setText(selection[0].text())
 
@@ -971,7 +1376,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     )
     version_box.addButton('Download now', QtWidgets.QMessageBox.AcceptRole)
     version_box.addButton('Remind me later', QtWidgets.QMessageBox.RejectRole)
-    ret = version_box.exec_()
+    ret = version_box.exec()
 
     if ret != QtWidgets.QMessageBox.AcceptRole:
       return
@@ -987,14 +1392,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
   # event: QCloseEvent
   def closeEvent(self, event):
     self.write_settings()
+    self.route_thread.quit()
+    self.route_thread.wait()
     event.accept()
 
 
 def run():
   appl = QtWidgets.QApplication(sys.argv)
+  if hasattr(qdarktheme, 'setup_theme'):
+    qdarktheme.setup_theme()
+  elif hasattr(qdarktheme, 'load_stylesheet'):
+    appl.setStyleSheet(qdarktheme.load_stylesheet())
   form = MainWindow()
   form.show()
-  appl.exec_()
+  appl.exec()
 
 
 if __name__ == "__main__":

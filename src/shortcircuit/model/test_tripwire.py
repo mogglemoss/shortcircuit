@@ -67,11 +67,7 @@ class TestParentSiblingKeys:
     
     def setup_method(self):
         """Set up test fixtures"""
-        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-            mock_session = Mock()
-            mock_session.post.return_value.status_code = 200
-            mock_requests.session.return_value = mock_session
-            self.tripwire = Tripwire("test", "test", "http://test.url")
+        self.tripwire = Tripwire("test", "test", "http://test.url")
     
     def test_parent_initial(self):
         """Test parent='initial' returns correct keys"""
@@ -143,12 +139,8 @@ class TestWormholeProperties:
     
     def setup_method(self):
         """Set up test fixtures"""
-        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-            mock_session = Mock()
-            mock_session.post.return_value.status_code = 200
-            mock_requests.session.return_value = mock_session
-            self.tripwire = Tripwire("test", "test", "http://test.url")
-            self.tripwire.eve_db = Mock(spec=EveDb)
+        self.tripwire = Tripwire("test", "test", "http://test.url")
+        self.tripwire.eve_db = Mock(spec=EveDb)
     
     def test_gate_properties(self):
         """Test GATE type returns stable properties"""
@@ -253,13 +245,9 @@ class TestProcessWormhole:
     
     def setup_method(self):
         """Set up test fixtures"""
-        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-            mock_session = Mock()
-            mock_session.post.return_value.status_code = 200
-            mock_requests.session.return_value = mock_session
-            self.tripwire = Tripwire("test", "test", "http://test.url")
-            self.tripwire.eve_db = Mock(spec=EveDb)
-            self.solar_map = Mock(spec=SolarMap)
+        self.tripwire = Tripwire("test", "test", "http://test.url")
+        self.tripwire.eve_db = Mock(spec=EveDb)
+        self.solar_map = Mock(spec=SolarMap)
     
     def test_rejects_empty_signatures_list(self):
         """Test that empty signatures list is rejected"""
@@ -435,11 +423,7 @@ class TestEmptyChainHandling:
     
     def setup_method(self):
         """Set up test fixtures"""
-        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
-            mock_session = Mock()
-            mock_session.post.return_value.status_code = 200
-            mock_requests.session.return_value = mock_session
-            self.tripwire = Tripwire("test", "test", "http://test.url")
+        self.tripwire = Tripwire("test", "test", "http://test.url")
     
     def test_empty_wormholes_list(self):
         """Test that empty wormholes list returns 0 connections"""

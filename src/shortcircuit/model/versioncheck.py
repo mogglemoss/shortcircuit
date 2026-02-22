@@ -1,11 +1,12 @@
 # versioncheck.py
+import asyncio
 import json
 import os
 from datetime import datetime, timedelta
 
-import requests
+import httpx
 import semver
-from PySide2 import QtCore
+from PySide6 import QtCore
 from dateutil import parser
 from dateutil.tz import tzutc
 
@@ -25,18 +26,21 @@ class VersionCheck(QtCore.QObject):
     """
     Emits latest version string
     """
-
     if 'DEBUG' in os.environ:
       import debugpy
       debugpy.debug_this_thread()
 
+    asyncio.run(self._process_async())
+
+  async def _process_async(self):
     try:
-      response = requests.get(
-        url=
-        'https://api.github.com/repos/secondfry/shortcircuit/releases/latest',
-        timeout=3.1,
-      )
-    except requests.exceptions.RequestException as e:
+      async with httpx.AsyncClient() as client:
+        response = await client.get(
+          url='https://api.github.com/repos/secondfry/shortcircuit/releases/latest',
+          timeout=3.1,
+          follow_redirects=True,
+        )
+    except httpx.RequestError as e:
       Logger.error('Exception raised while trying to get latest version info')
       Logger.error(e)
       self.finished.emit(None)
