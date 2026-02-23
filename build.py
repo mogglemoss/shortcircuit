@@ -134,17 +134,25 @@ def build():
 
     # Rename the app bundle to the final name with spaces
     dist_dir = os.path.join(project_root, 'dist')
-    built_app = os.path.join(dist_dir, f'{app_name_build}.app')
-    final_app = os.path.join(dist_dir, f'{app_name_final}.app')
-
-    if sys.platform == 'darwin' and os.path.exists(built_app):
-        if os.path.exists(final_app):
-            shutil.rmtree(final_app)
-        print(f"Renaming {app_name_build}.app to {app_name_final}.app...")
-        os.rename(built_app, final_app)
-        app_bundle = final_app
+    
+    if sys.platform == 'darwin':
+        built_name = f'{app_name_build}.app'
+        final_name = f'{app_name_final}.app'
     else:
-        app_bundle = built_app
+        built_name = app_name_build
+        final_name = app_name_final
+
+    built_path = os.path.join(dist_dir, built_name)
+    final_path = os.path.join(dist_dir, final_name)
+
+    if os.path.exists(built_path):
+        if os.path.exists(final_path):
+            shutil.rmtree(final_path)
+        print(f"Renaming {built_name} to {final_name}...")
+        os.rename(built_path, final_path)
+        app_bundle = final_path
+    else:
+        app_bundle = final_path
 
     # Fix macOS code signing issues (resource forks/Finder info)
     if sys.platform == 'darwin':
