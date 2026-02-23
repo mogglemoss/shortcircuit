@@ -3,7 +3,7 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 import httpx
 from shortcircuit import USER_AGENT
@@ -132,7 +132,7 @@ class Tripwire:
     self.eve_db = EveDb()
     self.username = username
     self.password = password
-    self.url = url
+    self.url = url.strip().rstrip('/')
     self.chain: TripwireChain = self._empty_chain()
     self.cookies: Optional[httpx.Cookies] = None
 
@@ -167,6 +167,9 @@ class Tripwire:
     }
 
     try:
+      # Initial GET to set cookies/session
+      await client.get(login_url, headers=headers, follow_redirects=True)
+
       result = await client.post(
         login_url,
         data=payload,
@@ -179,9 +182,81 @@ class Tripwire:
       return False
 
     if result.status_code != 200:
-      Logger.error('Result code is not 200')
+      Logger.error('Result code is not 200: {}'.format(result.status_code))
       Logger.error(result)
       return False
+
+    # Check for JSON success response (Tripwire sometimes returns JSON on login)
+    if is_json(result.text):
+      try:
+        data = result.json()
+        if data.get('result') == 'success':
+          return True
+      except ValueError:
+        pass
+
+    # Check if we are still on the login page or if login failed
+    if 'login.php' in str(result.url) or 'name="password"' in result.text.lower():
+      Logger.error('Login failed: Invalid credentials or stuck on login page. URL: {}'.format(result.url))
+      return False
+
+    return True
+
+  def clear_cookies(self):
+    self.cookies = None
+    Logger.info("Tripwire cookies cleared")
+
+  def test_credentials(self, proxy: str = None) -> Tuple[bool, str]:
+    return asyncio.run(self._test_credentials_task(proxy))
+
+  async def _test_credentials_task(self, proxy: str = None) -> Tuple[bool, str]:
+    client_kwargs = {'verify': True}
+    if proxy:
+      client_kwargs['proxy'] = str(proxy)
+
+    login_url = '{}/login.php'.format(self.url)
+    payload = {
+      'username': self.username,
+      'password': self.password,
+      'mode': 'login',
+    }
+    headers = {
+      'Referer': login_url,
+      'User-Agent': USER_AGENT,
+    }
+
+    try:
+      async with httpx.AsyncClient(**client_kwargs) as client:
+        # Initial GET to set cookies/session
+        await client.get(login_url, headers=headers, follow_redirects=True)
+
+        result = await client.post(
+          login_url,
+          data=payload,
+          headers=headers,
+          follow_redirects=True,
+        )
+
+        if result.status_code != 200:
+          return False, 'Result code is not 200: {}'.format(result.status_code)
+
+        # Check for JSON success response
+        try:
+          data = result.json()
+          if data.get('result') == 'success':
+            return True, 'Login successful'
+        except ValueError:
+          pass
+
+        # Check if we are still on the login page or if login failed
+        if 'login.php' in str(result.url) or 'name="password"' in result.text.lower():
+          return False, 'Invalid credentials or stuck on login page. Final URL: {}. Resp: {}'.format(result.url, result.text[:100])
+
+        return True, 'Login successful'
+    except httpx.RequestError as e:
+      return False, 'Network error: {}'.format(e)
+    except Exception as e:
+      return False, 'Error: {}'.format(e)
 
   async def _fetch_api_refresh_async(self, client: httpx.AsyncClient, system_id="30000142") -> Optional[RawTripwireChain]:
     Logger.debug('Getting {}...'.format(system_id))
@@ -207,13 +282,13 @@ class Tripwire:
       return None
 
     if result.status_code != 200:
-      Logger.error('Result code is not 200')
+      Logger.error('Result code is not 200: {}'.format(result.status_code))
       Logger.error(result)
       return None
 
     if not is_json(result.text):
-      Logger.error('Result is not JSON')
-      Logger.error(result)
+      Logger.error('Result is not JSON. URL: {}'.format(result.url))
+      Logger.error('Response preview: {}'.format(result.text[:200]))
       return None
 
     response: RawTripwireChain = result.json()
@@ -237,34 +312,39 @@ class Tripwire:
     }
 
   async def _get_chain_task(self, system_id: str) -> bool:
-    proxies = {}
     proxy_setting = Configuration.settings.value('proxy')
+    client_kwargs = {'verify': True}
     if proxy_setting:
-      proxies = {
-        'http://': str(proxy_setting),
-        'https://': str(proxy_setting),
-      }
+      client_kwargs['proxy'] = str(proxy_setting)
 
-    async with httpx.AsyncClient(proxies=proxies, verify=True) as client:
+    async with httpx.AsyncClient(**client_kwargs) as client:
       # Restore cookies if we have them
       if self.cookies:
+        Logger.debug("Restoring Tripwire cookies")
         client.cookies = self.cookies
+      else:
+        Logger.debug("No Tripwire cookies to restore")
 
       # Try to fetch
       raw_chain = await self._fetch_api_refresh_async(client, system_id)
 
       # If fetch failed (likely not logged in or session expired), try login
       if raw_chain is None:
+        Logger.info("Tripwire fetch failed or session expired, attempting login...")
         if await self._login_async(client):
           # Save cookies for next time
           self.cookies = client.cookies
+          Logger.debug("Tripwire login successful, cookies saved")
           # Retry fetch
           raw_chain = await self._fetch_api_refresh_async(client, system_id)
+      else:
+        Logger.debug("Tripwire fetch successful with existing session")
 
       if raw_chain:
         self.chain = self._normalize_chain(raw_chain)
         return True
 
+      Logger.error("Failed to fetch Tripwire chain after login attempt.")
       return False
 
   def get_chain(self, system_id="30000142") -> bool:

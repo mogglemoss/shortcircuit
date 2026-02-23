@@ -1,7 +1,19 @@
 # Short Circuit
 
 ## Description
-Short Circuit (previously known as Pathfinder) is a desktop application which is able to find the shortest path between solar systems (including wormholes) using data retrieved from Eve SDE and 3rd party wormhole mapping tools. The application is able to run on all systems where Python 3.10 and PySide6 are supported.
+Short Circuit (previously known as Pathfinder) is a desktop application which is able to find the shortest path between solar systems (including wormholes) using data retrieved from Eve SDE and 3rd party wormhole mapping tools. The application is able to run on all systems where Python 3.13 and PySide6 are supported.
+
+### Fork Enhancements (v1.1)
+*   **Tripwire Integration**: Added auto-refresh, connection testing, and session cookie persistence.
+*   **User Experience**: Improved tab order, keyboard shortcuts, and clipboard operations.
+*   **Stability**: Enhanced error handling for network requests and thread safety.
+
+### Fork Enhancements (v1.0)
+This version is a significant modernization of the original tool:
+*   **Modern UI**: Complete interface overhaul with a dark theme ("Daytripper" aesthetic) and improved sidebar layout.
+*   **Performance**: Rewritten networking layer using `asyncio` and `httpx` for non-blocking Tripwire updates.
+*   **Technology**: Ported to **Python 3.13** and **PySide6** (Qt 6) for better stability and HiDPI support.
+*   **macOS Support**: Native macOS app bundle and DMG installer support.
 
 **Features:**
 

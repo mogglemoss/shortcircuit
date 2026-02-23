@@ -6,11 +6,11 @@ a = Analysis(
     pathex=['/Users/scott/Documents/Devlopment Projects/Eve Online/shortcircuit/src'],
     binaries=[],
     datas=[('/Users/scott/Documents/Devlopment Projects/Eve Online/shortcircuit/src/database', 'database')],
-    hiddenimports=['shortcircuit', 'shortcircuit.app', 'shortcircuit.model', 'shortcircuit.model.esi', 'shortcircuit.model.esi.esi', 'shortcircuit.model.esi.server', 'shortcircuit.model.esi_processor', 'shortcircuit.model.evedb', 'shortcircuit.model.evescout', 'shortcircuit.model.logger', 'shortcircuit.model.navigation', 'shortcircuit.model.navprocessor', 'shortcircuit.model.solarmap', 'shortcircuit.model.test_evedb', 'shortcircuit.model.test_solarmap', 'shortcircuit.model.test_tripwire', 'shortcircuit.model.test_tripwire_gate', 'shortcircuit.model.tripwire', 'shortcircuit.model.utility', 'shortcircuit.model.utility.configuration', 'shortcircuit.model.utility.singleton', 'shortcircuit.model.versioncheck', 'shortcircuit.resources', 'httpx', 'dateutil', 'semver', 'qdarktheme', 'typing_extensions', 'appdirs'],
+    hiddenimports=['shortcircuit', 'shortcircuit.app', 'shortcircuit.model', 'shortcircuit.model.esi', 'shortcircuit.model.esi.esi', 'shortcircuit.model.esi.server', 'shortcircuit.model.esi_processor', 'shortcircuit.model.evedb', 'shortcircuit.model.evescout', 'shortcircuit.model.logger', 'shortcircuit.model.navigation', 'shortcircuit.model.navprocessor', 'shortcircuit.model.solarmap', 'shortcircuit.model.test_evedb', 'shortcircuit.model.test_solarmap', 'shortcircuit.model.test_tripwire', 'shortcircuit.model.test_tripwire_gate', 'shortcircuit.model.tripwire', 'shortcircuit.model.utility', 'shortcircuit.model.utility.configuration', 'shortcircuit.model.utility.gui_about', 'shortcircuit.model.utility.gui_main', 'shortcircuit.model.utility.gui_tripwire', 'shortcircuit.model.utility.singleton', 'shortcircuit.model.versioncheck', 'shortcircuit.resources', 'httpx', 'dateutil', 'semver', 'qdarktheme', 'typing_extensions', 'appdirs'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['PySide6.QtQml', 'PySide6.QtQuick'],
     noarchive=False,
     optimize=0,
 )

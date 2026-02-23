@@ -16,7 +16,8 @@ def excepthook(exc_type, exc_value, exc_tb):
   )
   # Print to console/stderr for immediate feedback if running from terminal
   sys.stderr.write("".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
-  sys.exit(1)
+  # Do not exit the application on uncaught exceptions, just log them.
+  # sys.exit(1)
 
 
 def main():

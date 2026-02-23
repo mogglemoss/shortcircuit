@@ -30,7 +30,11 @@ class VersionCheck(QtCore.QObject):
       import debugpy
       debugpy.debug_this_thread()
 
-    asyncio.run(self._process_async())
+    try:
+      asyncio.run(self._process_async())
+    except BaseException as e:
+      Logger.error(f"VersionCheck exception: {e}", exc_info=True)
+      self.finished.emit(None)
 
   async def _process_async(self):
     try:

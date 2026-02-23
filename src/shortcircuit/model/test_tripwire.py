@@ -9,7 +9,7 @@ Tests the core functionality of Tripwire integration including:
 """
 
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 import pytest
 
 from shortcircuit.model.tripwire import (

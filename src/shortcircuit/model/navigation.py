@@ -48,13 +48,15 @@ class Navigation:
     if not password:
       password = self.app_obj.tripwire_pass
     self.tripwire_password = password
-
-  def tripwire_augment(self, solar_map: SolarMap):
     self.tripwire_obj = Tripwire(
       self.tripwire_user,
       self.tripwire_password,
       self.tripwire_url,
     )
+
+  def tripwire_augment(self, solar_map: SolarMap):
+    if not self.tripwire_obj:
+      self.tripwire_set_login()
     connections = self.tripwire_obj.augment_map(solar_map)
     return connections
 

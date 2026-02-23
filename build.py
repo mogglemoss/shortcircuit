@@ -69,7 +69,7 @@ def build():
     if os.path.exists(dist_dir):
         print("Cleaning dist directory...")
         try:
-            shutil.rmtree(dist_dir)
+            shutil.rmtree(dist_dir, ignore_errors=True)
         except OSError as e:
             print(f"Warning: Could not fully clean dist directory: {e}")
     if os.path.exists(build_dir):
@@ -104,24 +104,33 @@ def build():
         'appdirs',
     ])
 
-    # Use subprocess to run PyInstaller to ensure a clean environment
-    args = [
-        sys.executable, '-m', 'PyInstaller',
+    # Configure PyInstaller arguments
+    pyi_args = [
         os.path.join(src_path, 'main.py'),
         f'--name={app_name_build}',         # Use name without spaces for build
         '--windowed',                       # No console window
         '--onedir',                         # Create a directory bundle
-        '--clean',                          # Clean cache
         '--noconfirm',                      # Overwrite output directory
         f'--add-data={add_data}',           # Include database files
         f'--paths={src_path}',              # Add src to python path
+        # Exclude QML/Quick to avoid plugin issues on macOS (libqtuiotouchplugin.dylib)
+        '--exclude-module=PySide6.QtQml',
+        '--exclude-module=PySide6.QtQuick',
     ]
     
     for hidden in hidden_imports:
-        args.append(f'--hidden-import={hidden}')
+        pyi_args.append(f'--hidden-import={hidden}')
 
     print("Running PyInstaller...")
-    subprocess.run(args, check=True)
+    try:
+        PyInstaller.__main__.run(pyi_args)
+    except SystemExit as e:
+        if e.code != 0:
+            print(f"[ERROR] PyInstaller failed with exit code {e.code}")
+            sys.exit(e.code)
+    except Exception as e:
+        print(f"[ERROR] PyInstaller failed: {e}")
+        sys.exit(1)
 
     # Rename the app bundle to the final name with spaces
     dist_dir = os.path.join(project_root, 'dist')
