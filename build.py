@@ -1,15 +1,13 @@
-import PyInstaller.__main__
 import os
 import sys
 import shutil
 import importlib.util
 import subprocess
-from PyInstaller.utils.hooks import collect_submodules
 
 def check_dependencies():
     """Checks if required dependencies are installed."""
     required = [
-        'PySide6', 'httpx', 'semver', 'dateutil', 'qdarktheme', 'appdirs', 'typing_extensions'
+        'PySide6', 'httpx', 'semver', 'dateutil', 'qdarktheme', 'appdirs', 'typing_extensions', 'PyInstaller'
     ]
     missing = []
     for req in required:
@@ -25,7 +23,8 @@ def check_dependencies():
         package_map = {
             'dateutil': 'python-dateutil',
             'typing_extensions': 'typing-extensions',
-            'qdarktheme': 'pyqtdarktheme'
+            'qdarktheme': 'pyqtdarktheme',
+            'PyInstaller': 'pyinstaller'
         }
         packages = [package_map.get(m, m) for m in missing]
         install_cmd = "python -m pip install " + " ".join(packages)
@@ -33,6 +32,10 @@ def check_dependencies():
         sys.exit(1)
 
 def build():
+    # Import PyInstaller here to avoid crash if not installed (handled by check_dependencies)
+    import PyInstaller.__main__
+    from PyInstaller.utils.hooks import collect_submodules
+
     # Get the absolute path to the project root
     # We assume this script is located in the project root
     project_root = os.path.abspath(os.path.dirname(__file__))

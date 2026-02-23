@@ -39,6 +39,11 @@ class StateTripwire(TypedDict):
   error: Union[str, None]
 
 
+class StatePathfinder(TypedDict):
+  connections: int
+  enabled: bool
+  error: Union[str, None]
+
 class TripwireDialog(QtWidgets.QDialog):
   """
   Tripwire Configuration Window
@@ -55,13 +60,26 @@ class TripwireDialog(QtWidgets.QDialog):
     auto_refresh_interval,
     clear_cookies_callback,
     test_connection_callback,
+    test_pf_callback,
+    pf_url,
+    pf_token,
+    pf_enabled,
     parent=None,
   ):
     super().__init__(parent)
-    self.setWindowTitle("Tripwire Configuration")
-    self.setMinimumWidth(350)
+    self.setWindowTitle("Configuration")
+    self.setMinimumWidth(400)
 
-    layout = QtWidgets.QVBoxLayout(self)
+    main_layout = QtWidgets.QVBoxLayout(self)
+
+    # Tabs
+    self.tabs = QtWidgets.QTabWidget()
+    main_layout.addWidget(self.tabs)
+
+    # --- Tripwire Tab ---
+    self.tab_tripwire = QtWidgets.QWidget()
+    self.tabs.addTab(self.tab_tripwire, "Tripwire")
+    trip_layout = QtWidgets.QVBoxLayout(self.tab_tripwire)
 
     # Form
     form_layout = QtWidgets.QFormLayout()
@@ -110,19 +128,47 @@ class TripwireDialog(QtWidgets.QDialog):
     self.pushButton_clear_cookies.clicked.connect(clear_cookies_callback)
     form_layout.addRow("Session:", self.pushButton_clear_cookies)
 
-    layout.addLayout(form_layout)
+    trip_layout.addLayout(form_layout)
 
     # Eve-Scout
     self.checkBox_evescout = QtWidgets.QCheckBox("Enable Eve-Scout (Thera connections)")
     self.checkBox_evescout.setChecked(evescout_enabled)
-    layout.addWidget(self.checkBox_evescout)
+    trip_layout.addWidget(self.checkBox_evescout)
 
     # Logo / Link
     self.label_evescout_logo = QtWidgets.QLabel("Eve-Scout")
     self.label_evescout_logo.setAlignment(QtCore.Qt.AlignCenter)
     self.label_evescout_logo.setCursor(QtCore.Qt.PointingHandCursor)
     self.label_evescout_logo.mouseReleaseEvent = TripwireDialog.logo_click
-    layout.addWidget(self.label_evescout_logo)
+    trip_layout.addWidget(self.label_evescout_logo)
+    trip_layout.addStretch()
+
+    # --- Pathfinder Tab ---
+    self.tab_pathfinder = QtWidgets.QWidget()
+    self.tabs.addTab(self.tab_pathfinder, "Pathfinder")
+    pf_layout = QtWidgets.QVBoxLayout(self.tab_pathfinder)
+
+    pf_form = QtWidgets.QFormLayout()
+    self.lineEdit_pf_url = QtWidgets.QLineEdit(pf_url)
+    self.lineEdit_pf_url.setPlaceholderText("https://pathfinder.your-corp.com/")
+    pf_form.addRow("URL:", self.lineEdit_pf_url)
+
+    self.lineEdit_pf_token = QtWidgets.QLineEdit(pf_token)
+    self.lineEdit_pf_token.setEchoMode(QtWidgets.QLineEdit.Password)
+    pf_form.addRow("API Token:", self.lineEdit_pf_token)
+
+    self.pushButton_pf_test = QtWidgets.QPushButton("Test Connection")
+    self.pushButton_pf_test.clicked.connect(lambda: test_pf_callback(
+        self.lineEdit_pf_url.text(),
+        self.lineEdit_pf_token.text()
+    ))
+    pf_form.addRow("", self.pushButton_pf_test)
+    pf_layout.addLayout(pf_form)
+
+    self.checkBox_pf_enabled = QtWidgets.QCheckBox("Enable Pathfinder")
+    self.checkBox_pf_enabled.setChecked(pf_enabled)
+    pf_layout.addWidget(self.checkBox_pf_enabled)
+    pf_layout.addStretch()
 
     # Buttons
     button_box = QtWidgets.QDialogButtonBox(
@@ -130,7 +176,7 @@ class TripwireDialog(QtWidgets.QDialog):
     )
     button_box.accepted.connect(self.accept)
     button_box.rejected.connect(self.reject)
-    layout.addWidget(button_box)
+    main_layout.addWidget(button_box)
 
   @staticmethod
   def logo_click(event):
@@ -143,7 +189,7 @@ class AboutDialog(QtWidgets.QDialog):
   About Dialog
   """
 
-  def __init__(self, parent=None):
+  def __init__(self, check_updates_callback=None, parent=None):
     super().__init__(parent)
     self.setWindowTitle("About Short Circuit")
     self.setFixedSize(400, 380)
@@ -169,7 +215,7 @@ class AboutDialog(QtWidgets.QDialog):
     header.addWidget(self.label_title)
 
     self.label_icon = QtWidgets.QLabel()
-    self.label_icon.setPixmap(QtGui.QPixmap(":images/app_icon_small.png"))
+    self.label_icon.setPixmap(QtGui.QPixmap(":/images/app_icon_small.png"))
     self.label_icon.setCursor(QtCore.Qt.PointingHandCursor)
     self.label_icon.mouseReleaseEvent = AboutDialog.icon_click
     header.addWidget(self.label_icon)
@@ -211,6 +257,11 @@ class AboutDialog(QtWidgets.QDialog):
     self.pushButton_debug = QtWidgets.QPushButton("Debug Colors")
     self.pushButton_debug.clicked.connect(self.debug_colors)
     btn_layout.addWidget(self.pushButton_debug)
+
+    if check_updates_callback:
+      self.pushButton_updates = QtWidgets.QPushButton("Check Updates")
+      self.pushButton_updates.clicked.connect(check_updates_callback)
+      btn_layout.addWidget(self.pushButton_updates)
 
     btn_layout.addStretch()
     self.pushButton_o7 = QtWidgets.QPushButton("  Fly safe o7  ")
@@ -285,6 +336,7 @@ class MainWindow(QtWidgets.QMainWindow):
     return ret
 
   start_route_calculation = QtCore.Signal(int, int)
+  start_version_check = QtCore.Signal()
 
   def __init__(self, parent=None):
     super().__init__(parent)
@@ -301,6 +353,11 @@ class MainWindow(QtWidgets.QMainWindow):
     self.auto_refresh_enabled = False
     self.auto_refresh_interval = 30
 
+    # Pathfinder settings
+    self.pathfinder_url = None
+    self.pathfinder_token = None
+    self.pathfinder_enabled = False
+
     self.state_eve_connection = StateEVEConnection({
       "connected": False, "char_name": None, "error": None
     })
@@ -308,6 +365,9 @@ class MainWindow(QtWidgets.QMainWindow):
       "connections": 0, "enabled": False, "error": None
     })
     self.state_tripwire = StateTripwire({"connections": 0, "error": None})
+    self.state_pathfinder = StatePathfinder({
+      "connections": 0, "enabled": False, "error": None
+    })
     
     self.auto_refresh_timer = QtCore.QTimer(self)
     self.auto_refresh_timer.setInterval(self.auto_refresh_interval * 1000)
@@ -352,13 +412,18 @@ class MainWindow(QtWidgets.QMainWindow):
     self.statusBar().addPermanentWidget(self.status_evescout, 0)
     self._status_evescout_update()
 
+    self.status_pathfinder = QtWidgets.QLabel()
+    self.status_pathfinder.setContentsMargins(5, 0, 5, 0)
+    self.statusBar().addPermanentWidget(self.status_pathfinder, 0)
+    self._status_pathfinder_update()
+
     self.status_eve_connection = QtWidgets.QLabel()
     self.status_eve_connection.setContentsMargins(5, 0, 5, 0)
     self.statusBar().addPermanentWidget(self.status_eve_connection, 0)
     self._status_eve_connection_update()
 
     # Icons
-    self.icon_wormhole = QtGui.QIcon(":images/wh_icon.png")
+    self.icon_wormhole = QtGui.QIcon(":/images/wh_icon.png")
 
     # Thread initial config
     Logger.register_thread(QtCore.QThread.currentThread(), 'main')
@@ -380,6 +445,7 @@ class MainWindow(QtWidgets.QMainWindow):
     self.version_check.finished.connect(self.version_check_done)
     # noinspection PyUnresolvedReferences
     self.version_thread.started.connect(self.version_check.process)
+    self.start_version_check.connect(self.version_check.process)
 
     # Route thread
     self.route_thread = QtCore.QThread()
@@ -916,8 +982,15 @@ class MainWindow(QtWidgets.QMainWindow):
     self.auto_refresh_enabled = self.settings.value('auto_refresh_enabled', 'false') == 'true'
     self.auto_refresh_interval = int(self.settings.value('auto_refresh_interval', 30))
     self.settings.endGroup()
+
+    self.settings.beginGroup('Pathfinder')
+    self.pathfinder_url = self.settings.value('url', '')
+    self.pathfinder_token = self.settings.value('token', '')
+    self.pathfinder_enabled = self.settings.value('enabled', 'false') == 'true'
+    self.settings.endGroup()
+
     self.update_auto_refresh_state()
-    self.nav.tripwire_set_login()
+    self.nav.setup_mappers()
 
     if self.tripwire_user and self.tripwire_pass:
       self.pushButton_trip_get.setEnabled(True)
@@ -993,6 +1066,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.settings.setValue('evescout_enabled', self.state_evescout["enabled"])
     self.settings.setValue('auto_refresh_enabled', self.auto_refresh_enabled)
     self.settings.setValue('auto_refresh_interval', self.auto_refresh_interval)
+    self.settings.endGroup()
+
+    self.settings.beginGroup('Pathfinder')
+    self.settings.setValue('url', self.pathfinder_url)
+    self.settings.setValue('token', self.pathfinder_token)
+    self.settings.setValue('enabled', self.pathfinder_enabled)
     self.settings.endGroup()
 
   def write_settings(self):
@@ -1387,16 +1466,35 @@ class MainWindow(QtWidgets.QMainWindow):
     )
 
   def _status_tripwire_update(self):
-    if self.state_evescout["error"]:
-      self._status_tripwire("Tripwire: disabled", MessageType.ERROR)
+    if self.state_tripwire["error"]:
+      self._status_tripwire("Tripwire: error", MessageType.ERROR)
       return
 
-    if not self.state_evescout["connections"]:
+    if not self.state_tripwire["connections"]:
       self._status_tripwire("Tripwire: enabled")
       return
 
     self._status_tripwire(
       "Tripwire: {} connections".format(self.state_tripwire["connections"]),
+      MessageType.OK
+    )
+
+  def _status_pathfinder_update(self):
+    if not self.pathfinder_enabled:
+      self._label_message(self.status_pathfinder, "Pathfinder: disabled", MessageType.INFO)
+      return
+
+    if self.state_pathfinder["error"]:
+      self._label_message(self.status_pathfinder, "Pathfinder: error", MessageType.ERROR)
+      return
+
+    if not self.state_pathfinder["connections"]:
+      self._label_message(self.status_pathfinder, "Pathfinder: enabled", MessageType.INFO)
+      return
+
+    self._label_message(
+      self.status_pathfinder,
+      "Pathfinder: {} connections".format(self.state_pathfinder["connections"]),
       MessageType.OK
     )
 
@@ -1433,25 +1531,33 @@ class MainWindow(QtWidgets.QMainWindow):
       )
     self.pushButton_set_dest.setEnabled(True)
 
-  @QtCore.Slot(int, int)
-  def worker_thread_done(self, connections, evescout_connections):
+  @QtCore.Slot(dict)
+  def worker_thread_done(self, results):
     self.worker_thread.quit()
 
     # wait for thread to finish
     while self.worker_thread.isRunning():
       time.sleep(0.01)
 
+    # Eve Scout
+    evescout_connections = results.get("Eve Scout", 0)
     self.state_evescout["connections"] = evescout_connections
     if evescout_connections < 0:
-      # FIXME(secondfry): pass actual error and dispaly it to the user.
       self.state_evescout["error"] = "error"
     self._status_evescout_update()
 
+    # Tripwire
+    connections = results.get("Tripwire", 0)
     self.state_tripwire["connections"] = connections
     if connections < 0:
-      # FIXME(secondfry): pass actual error and dispaly it to the user.
       self.state_tripwire["error"] = "error. Check url/user/pass."
     self._status_tripwire_update()
+
+    # Pathfinder
+    pf_connections = results.get("Pathfinder", 0)
+    self.state_pathfinder["connections"] = pf_connections
+    self.state_pathfinder["error"] = "error" if pf_connections < 0 else None
+    self._status_pathfinder_update()
 
     if self.tripwire_user and self.tripwire_pass:
       self.pushButton_trip_get.setEnabled(True)
@@ -1504,6 +1610,10 @@ class MainWindow(QtWidgets.QMainWindow):
       self.auto_refresh_interval,
       self.clear_tripwire_cookies,
       self.test_tripwire_connection,
+      self.test_pathfinder_connection,
+      self.pathfinder_url,
+      self.pathfinder_token,
+      self.pathfinder_enabled,
     )
 
     if not tripwire_dialog.exec():
@@ -1513,7 +1623,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.tripwire_user = tripwire_dialog.lineEdit_user.text()
     self.tripwire_pass = tripwire_dialog.lineEdit_pass.text()
     self.global_proxy = tripwire_dialog.lineEdit_proxy.text()
-    self.nav.tripwire_set_login()
+
+    self.pathfinder_url = tripwire_dialog.lineEdit_pf_url.text()
+    self.pathfinder_token = tripwire_dialog.lineEdit_pf_token.text()
+    self.pathfinder_enabled = tripwire_dialog.checkBox_pf_enabled.isChecked()
+
+    self.nav.setup_mappers()
     self.state_evescout["enabled"
                         ] = tripwire_dialog.checkBox_evescout.isChecked()
     
@@ -1522,6 +1637,7 @@ class MainWindow(QtWidgets.QMainWindow):
     self.update_auto_refresh_state()
 
     self._status_evescout_update()
+    self._status_pathfinder_update()
     self.write_settings_tripwire()
 
     if self.tripwire_user and self.tripwire_pass:
@@ -1550,8 +1666,8 @@ class MainWindow(QtWidgets.QMainWindow):
       self._status_tripwire_update()
 
   def clear_tripwire_cookies(self):
-    if self.nav.tripwire_obj:
-      self.nav.tripwire_obj.clear_cookies()
+    if self.nav.tripwire_instance:
+      self.nav.tripwire_instance.clear_cookies()
     self._message_box("Tripwire", "Cookies cleared!")
 
   def test_tripwire_connection(self, url, user, password, proxy):
@@ -1568,6 +1684,21 @@ class MainWindow(QtWidgets.QMainWindow):
       QtWidgets.QApplication.restoreOverrideCursor()
 
     self._message_box("Tripwire Connection", f"{'Success' if success else 'Failed'}: {message}")
+
+  def test_pathfinder_connection(self, url, token):
+    from shortcircuit.model.pathfinder import Pathfinder
+
+    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+    try:
+      pf = Pathfinder(url, token)
+      success, message = pf.test_credentials()
+    except Exception as e:
+      success = False
+      message = str(e)
+    finally:
+      QtWidgets.QApplication.restoreOverrideCursor()
+
+    self._message_box("Pathfinder Connection", f"{'Success' if success else 'Failed'}: {message}")
 
   @QtCore.Slot()
   def auto_refresh_triggered(self):
@@ -1613,6 +1744,8 @@ class MainWindow(QtWidgets.QMainWindow):
       self.nav.reset_chain()
       self.state_evescout["connections"] = 0
       self.state_tripwire["connections"] = 0
+      self.state_pathfinder["connections"] = 0
+      self._status_pathfinder_update()
       self._status_evescout_update()
       self._status_tripwire_update()
 
@@ -1659,12 +1792,14 @@ class MainWindow(QtWidgets.QMainWindow):
       self.lineEdit_set_dest.setText(selection[0].text())
 
   def open_about(self):
-    AboutDialog(self).exec()
+    AboutDialog(self.trigger_version_check, self).exec()
+
+  def trigger_version_check(self):
+    self._path_message("Checking for updates...", MessageType.INFO)
+    self.start_version_check.emit()
 
   @QtCore.Slot(str)
   def version_check_done(self, latest):
-    self.version_thread.quit()
-
     if not latest:
       return
 

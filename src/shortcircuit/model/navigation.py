@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, List
 
 from .evedb import EveDb, SystemDescription, WormholeMassspan, WormholeSize, WormholeTimespan
 from .evescout import EveScout
+from .mapper_registry import MapperRegistry
+from .pathfinder import Pathfinder
 from .solarmap import ConnectionType, SolarMap
 from .tripwire import Tripwire
 
@@ -21,44 +23,42 @@ class Navigation:
     self.eve_db = eve_db
 
     self.solar_map = SolarMap(self.eve_db)
-    self.tripwire_obj = None
-
-    self.tripwire_url = self.app_obj.tripwire_url
-    self.tripwire_user = self.app_obj.tripwire_user
-    self.tripwire_password = self.app_obj.tripwire_pass
+    self.mapper_registry = MapperRegistry()
+    
+    # Keep a reference to the Tripwire instance for cookie management
+    self.tripwire_instance = None
 
   def reset_chain(self):
     self.solar_map = SolarMap(self.eve_db)
     return self.solar_map
 
-  def tripwire_set_login(
-    self,
-    url: str = None,
-    user: str = None,
-    password: str = None,
-  ):
-    if not url:
-      url = self.app_obj.tripwire_url
-    self.tripwire_url = url
+  def setup_mappers(self):
+    """Configures the mapper registry based on current app settings."""
+    self.mapper_registry.clear()
+    self.tripwire_instance = None
 
-    if not user:
-      user = self.app_obj.tripwire_user
-    self.tripwire_user = user
+    # Add Tripwire if configured
+    if self.app_obj.tripwire_url and self.app_obj.tripwire_user and self.app_obj.tripwire_pass:
+      self.tripwire_instance = Tripwire(
+        self.app_obj.tripwire_user,
+        self.app_obj.tripwire_pass,
+        self.app_obj.tripwire_url,
+      )
+      self.mapper_registry.register(self.tripwire_instance)
 
-    if not password:
-      password = self.app_obj.tripwire_pass
-    self.tripwire_password = password
-    self.tripwire_obj = Tripwire(
-      self.tripwire_user,
-      self.tripwire_password,
-      self.tripwire_url,
-    )
+    # Add Eve-Scout if enabled
+    if self.app_obj.state_evescout["enabled"]:
+      self.mapper_registry.register(EveScout())
 
-  def tripwire_augment(self, solar_map: SolarMap):
-    if not self.tripwire_obj:
-      self.tripwire_set_login()
-    connections = self.tripwire_obj.augment_map(solar_map)
-    return connections
+    # Add Pathfinder if enabled
+    if self.app_obj.pathfinder_enabled:
+      self.mapper_registry.register(Pathfinder(
+        self.app_obj.pathfinder_url,
+        self.app_obj.pathfinder_token
+      ))
+
+  def augment_map(self, solar_map: SolarMap):
+    return self.mapper_registry.augment_map(solar_map)
 
   # FIXME refactor neighbor info - weights
   @staticmethod
@@ -194,9 +194,3 @@ class Navigation:
     short_format = 'Short Circuit: `{}`'.format(' '.join(short_format))
 
     return (route, short_format)
-
-
-# TODO move this augment_map somewhere
-def evescout_augment(solar_map: SolarMap):
-  evescout = EveScout()
-  return evescout.augment_map(solar_map)
