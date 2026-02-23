@@ -4,7 +4,7 @@ import os
 from PySide6 import QtCore
 
 from .logger import Logger
-from .navigation import Navigation, evescout_augment
+from .navigation import Navigation
 
 
 class NavProcessor(QtCore.QObject):
@@ -12,7 +12,7 @@ class NavProcessor(QtCore.QObject):
   Navigation Processor (will work in a separate thread)
   """
 
-  finished = QtCore.Signal(int, int)
+  finished = QtCore.Signal(dict)
 
   def __init__(self, nav: Navigation, parent=None):
     super().__init__(parent)
@@ -26,14 +26,16 @@ class NavProcessor(QtCore.QObject):
     
     try:
       solar_map = self.nav.reset_chain()
-      connections = self.nav.tripwire_augment(solar_map)
-      evescout_connections = 0
-      if self.evescout_enable:
-        evescout_connections = evescout_augment(solar_map)
-      if connections > 0 or evescout_connections > 0:
+      
+      # Fetch data from all registered mappers
+      results = self.nav.augment_map(solar_map)
+      
+      # Check if we have any connections from any source
+      total_connections = sum(count for count in results.values() if count > 0)
+      
+      if total_connections > 0:
         self.nav.solar_map = solar_map
-      self.finished.emit(connections, evescout_connections)
+      self.finished.emit(results)
     except BaseException as e:
       Logger.error(f"NavProcessor exception: {e}", exc_info=True)
-      # Emit -1 to signal error to the UI
-      self.finished.emit(-1, -1)
+      self.finished.emit({})

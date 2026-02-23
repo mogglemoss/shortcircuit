@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 import httpx
@@ -128,13 +128,17 @@ class Tripwire:
   WTYPE_UNKNOWN = '----'
   SIG_UNKNOWN = '-------'
 
-  def __init__(self, username: str, password: str, url: str):
+  def __init__(self, username: str, password: str, url: str, name: str = "Tripwire"):
     self.eve_db = EveDb()
     self.username = username
     self.password = password
     self.url = url.strip().rstrip('/')
+    self.name = name
     self.chain: TripwireChain = self._empty_chain()
     self.cookies: Optional[httpx.Cookies] = None
+
+  def get_name(self) -> str:
+    return self.name
 
   @staticmethod
   def _empty_chain() -> TripwireChain:
@@ -477,8 +481,8 @@ class Tripwire:
     # Compute time elapsed from this moment to when the signature was updated
     last_modified = datetime.strptime(
       signature_in['modifiedTime'], "%Y-%m-%d %H:%M:%S"
-    )
-    delta = datetime.utcnow() - last_modified
+    ).replace(tzinfo=timezone.utc)
+    delta = datetime.now(timezone.utc) - last_modified
     time_elapsed = round(delta.total_seconds() / 3600.0, 1)
 
     # Add wormhole connection to solar system

@@ -77,7 +77,7 @@ class VersionCheck(QtCore.QObject):
 
     github_version = github_data['tag_name'].split('v')[-1]
     try:
-      if semver.compare(github_version, app_version) != 1:
+      if semver.Version.parse(github_version) <= semver.Version.parse(app_version):
         Logger.debug('GitHub version is not newer')
         return False
     except ValueError:
@@ -94,7 +94,7 @@ class VersionCheck(QtCore.QObject):
 
     saved_version = Configuration.settings.value('updates/version')
     Logger.debug('Latest remote version saved is – v{}'.format(saved_version))
-    if not saved_version or semver.compare(github_version, saved_version) != 0:
+    if not saved_version or semver.Version.parse(github_version) != semver.Version.parse(saved_version):
       Configuration.settings.setValue('updates/version', github_version)
       Configuration.settings.setValue(
         'updates/ping_timestamp', datetime_now_string

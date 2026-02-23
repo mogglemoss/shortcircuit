@@ -3,6 +3,16 @@ import os
 import traceback
 from appdirs import AppDirs
 
+# Fix for macOS Qt platform plugin crash
+# This must be done before importing QApplication (which happens in shortcircuit.app)
+import PySide6
+plugin_path = os.path.join(os.path.dirname(PySide6.__file__), 'plugins', 'platforms')
+if not os.path.exists(plugin_path):
+    # Fallback for some pip installations (like yours)
+    plugin_path = os.path.join(os.path.dirname(PySide6.__file__), 'Qt', 'plugins', 'platforms')
+if os.path.exists(plugin_path):
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
+
 from shortcircuit import app, __appslug__, __version__
 from shortcircuit.model.logger import Logger
 

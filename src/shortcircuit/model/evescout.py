@@ -20,9 +20,14 @@ class EveScout:
   def __init__(
     self,
     url: str = 'https://api.eve-scout.com/v2/public/signatures',
+    name: str = "Eve Scout",
   ):
     self.eve_db = EveDb()
     self.evescout_url = url
+    self.name = name
+
+  def get_name(self) -> str:
+    return self.name
 
   async def _augment_map_async(self, solar_map: SolarMap) -> int:
     headers = {'User-Agent': USER_AGENT}
