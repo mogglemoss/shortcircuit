@@ -21,7 +21,7 @@ class Logger(metaclass=Singleton):
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    app_dirs = AppDirs(__appslug__, "secondfry", version=__version__)
+    app_dirs = AppDirs(__appslug__, "mogglemoss", version=__version__)
     if not os.path.isdir(app_dirs.user_log_dir):
       os.makedirs(app_dirs.user_log_dir)
     log_file = os.path.join(app_dirs.user_log_dir, 'shortcircuit.log')

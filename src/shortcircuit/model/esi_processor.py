@@ -3,7 +3,6 @@
 import threading
 
 from PySide6 import QtCore
-from .esi.esi import ESI
 
 
 class ESIProcessor(QtCore.QObject):
@@ -17,6 +16,7 @@ class ESIProcessor(QtCore.QObject):
 
   def __init__(self, parent=None):
     super().__init__(parent)
+    from .esi.esi import ESI
     self.esi = ESI(self._login_callback, self._logout_callback)
 
   def login(self):

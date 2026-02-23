@@ -33,7 +33,6 @@ def check_dependencies():
 
 def build():
     # Import PyInstaller here to avoid crash if not installed (handled by check_dependencies)
-    import PyInstaller.__main__
     from PyInstaller.utils.hooks import collect_submodules
 
     # Get the absolute path to the project root
@@ -107,33 +106,72 @@ def build():
         'appdirs',
     ])
 
-    # Configure PyInstaller arguments
-    pyi_args = [
-        os.path.join(src_path, 'main.py'),
-        f'--name={app_name_build}',         # Use name without spaces for build
-        '--windowed',                       # No console window
-        '--onedir',                         # Create a directory bundle
-        '--noconfirm',                      # Overwrite output directory
-        f'--add-data={add_data}',           # Include database files
-        f'--paths={src_path}',              # Add src to python path
-        # Exclude QML/Quick to avoid plugin issues on macOS (libqtuiotouchplugin.dylib)
-        '--exclude-module=PySide6.QtQml',
-        '--exclude-module=PySide6.QtQuick',
-    ]
+    # Generate Spec File content
+    # We explicitly define the spec to ensure base_library.zip is handled correctly in COLLECT/BUNDLE
+    spec_content = f"""# -*- mode: python ; coding: utf-8 -*-
+import sys
+import os
+
+block_cipher = None
+
+a = Analysis(
+    ['{os.path.join(src_path, "main.py")}'],
+    pathex=['{project_root}'],
+    binaries=[],
+    datas=[('{db_src}', 'database')],
+    hiddenimports={hidden_imports},
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=['PySide6.QtQml', 'PySide6.QtQuick'],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='{app_name_build}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False, 
+    upx=True,
+    console=False,  # Windowed mode
+    disable_windowed_traceback=False,
+    argv_emulation=True,
+    target_arch='x86_64',
+    codesign_identity=None,
+    entitlements_file=None,
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='{app_name_build}',
+)
+"""
     
-    for hidden in hidden_imports:
-        pyi_args.append(f'--hidden-import={hidden}')
+    spec_file = os.path.join(project_root, f"{app_name_build}.spec")
+    with open(spec_file, "w") as f:
+        f.write(spec_content)
+    
+    print(f"Generated spec file: {spec_file}")
 
     print("Running PyInstaller...")
     try:
-        PyInstaller.__main__.run(pyi_args)
-    except SystemExit as e:
-        if e.code != 0:
-            print(f"[ERROR] PyInstaller failed with exit code {e.code}")
-            sys.exit(e.code)
-    except Exception as e:
-        print(f"[ERROR] PyInstaller failed: {e}")
-        sys.exit(1)
+        subprocess.run([sys.executable, '-m', 'PyInstaller', '--clean', '--noconfirm', spec_file], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] PyInstaller failed with exit code {e.returncode}")
+        sys.exit(e.returncode)
 
     # Rename the app bundle to the final name with spaces
     dist_dir = os.path.join(project_root, 'dist')
@@ -145,16 +183,130 @@ def build():
         built_name = app_name_build
         final_name = app_name_final
 
-    built_path = os.path.join(dist_dir, built_name)
-    final_path = os.path.join(dist_dir, final_name)
+    # Manual macOS Bundling (since we removed BUNDLE from spec)
+    if sys.platform == 'darwin':
+        print("Creating macOS App Bundle manually...")
+        collect_output = os.path.join(dist_dir, app_name_build)
+        app_bundle_path = os.path.join(dist_dir, final_name)
+        contents_path = os.path.join(app_bundle_path, "Contents")
+        macos_path = os.path.join(contents_path, "MacOS")
+        resources_path = os.path.join(contents_path, "Resources")
+        frameworks_path = os.path.join(contents_path, "Frameworks")
+        
+        if os.path.exists(app_bundle_path):
+            shutil.rmtree(app_bundle_path)
+            
+        os.makedirs(macos_path)
+        os.makedirs(resources_path)
+        
+        # Move COLLECT output to MacOS folder
+        for item in os.listdir(collect_output):
+            s = os.path.join(collect_output, item)
+            d = os.path.join(macos_path, item)
+            if os.path.isdir(s):
+                shutil.copytree(s, d)
+            else:
+                shutil.copy2(s, d)
+        
+        # Fix for Python shared library location
+        # PyInstaller bootloader in a bundle looks for Python in ../Frameworks/Python
+        if not os.path.exists(frameworks_path):
+            os.makedirs(frameworks_path)
+            
+        # Search for Python library in _internal (default PyInstaller 6)
+        python_lib_src = None
+        internal_dir = os.path.join(macos_path, "_internal")
+        
+        if os.path.exists(internal_dir):
+            # Check for 'Python' or 'libpython*.dylib' inside _internal
+            if os.path.exists(os.path.join(internal_dir, "Python")):
+                python_lib_src = os.path.join(internal_dir, "Python")
+            else:
+                for f in os.listdir(internal_dir):
+                    if f.startswith("libpython") and f.endswith(".dylib"):
+                        python_lib_src = os.path.join(internal_dir, f)
+                        break
+        
+        if not python_lib_src:
+             # Fallback: check root of MacOS
+             if os.path.exists(os.path.join(macos_path, "Python")):
+                 python_lib_src = os.path.join(macos_path, "Python")
+        
+        if python_lib_src:
+            print(f"  - Found Python library at: {python_lib_src}")
+            
+            # 1. Symlink Python library to Frameworks/Python (for bootloader)
+            dest_link = os.path.join(frameworks_path, "Python")
+            
+            if os.path.exists(dest_link):
+                os.remove(dest_link)
+                
+            # Calculate relative path: e.g. ../MacOS/_internal/Python
+            link_target = os.path.relpath(python_lib_src, frameworks_path)
+            print(f"  - Symlinking {link_target} to {dest_link}...")
+            os.symlink(link_target, dest_link)
 
-    if os.path.exists(built_path):
-        if os.path.exists(final_path):
-            shutil.rmtree(final_path)
-        print(f"Renaming {built_name} to {final_name}...")
-        os.rename(built_path, final_path)
-        app_bundle = final_path
+            # 2. Symlink _internal to Frameworks/_internal (for interpreter to find encodings)
+            # If the DLL is loaded from Frameworks, it might look for _internal next to it
+            if os.path.exists(internal_dir):
+                dest_internal_link = os.path.join(frameworks_path, "_internal")
+                if os.path.exists(dest_internal_link):
+                    os.remove(dest_internal_link)
+                
+                rel_internal_path = os.path.relpath(internal_dir, frameworks_path)
+                print(f"  - Symlinking {rel_internal_path} to {dest_internal_link}...")
+                os.symlink(rel_internal_path, dest_internal_link)
+        else:
+            print("[WARNING] Could not find Python shared library to move to Frameworks!")
+            # List contents to help debugging
+            try:
+                print(f"Contents of {macos_path}: {os.listdir(macos_path)}")
+                if os.path.exists(internal_dir):
+                    print(f"Contents of {internal_dir}: {os.listdir(internal_dir)}")
+            except OSError:
+                pass
+        
+        # Create Info.plist
+        info_plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>{app_name_final}</string>
+    <key>CFBundleExecutable</key>
+    <string>{app_name_build}</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.mogglemoss.shortcircuit</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>{app_name_final}</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.1.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+"""
+        with open(os.path.join(contents_path, "Info.plist"), "w") as f:
+            f.write(info_plist)
+            
+        # Clean up original COLLECT folder
+        shutil.rmtree(collect_output)
+        
+        app_bundle = app_bundle_path
+        print(f"App bundle created at: {app_bundle}")
+
     else:
+        # Linux/Windows handling
+        built_path = os.path.join(dist_dir, built_name)
+        final_path = os.path.join(dist_dir, final_name)
+        if os.path.exists(built_path):
+            if os.path.exists(final_path):
+                shutil.rmtree(final_path)
+            os.rename(built_path, final_path)
         app_bundle = final_path
 
     # Fix macOS code signing issues (resource forks/Finder info)
@@ -162,15 +314,31 @@ def build():
         if os.path.exists(app_bundle):
             print("\n[INFO] Fixing macOS code signing...")
             try:
-                # 1. Merge/Clean AppleDouble (._) files which confuse codesign
-                print("  - Running dot_clean...")
-                subprocess.run(['dot_clean', '-m', app_bundle], check=True)
-                
-                # 2. Remove extended attributes (resource forks, Finder info)
+                # 0. Unlock files to ensure we can modify them
+                print("  - Unlocking files...")
+                subprocess.run(['chflags', '-R', 'nouchg', app_bundle], check=False)
+
+                # 0. Remove extended attributes first (clears resource forks on APFS)
                 print("  - Removing extended attributes...")
                 subprocess.run(['xattr', '-cr', app_bundle], check=True)
+
+                # 1. Remove ._ files (AppleDouble) and .DS_Store recursively
+                print("  - Removing ._ files...")
+                subprocess.run(['find', app_bundle, '-name', '._*', '-delete'], check=True)
+                print("  - Removing .DS_Store files...")
+                subprocess.run(['find', app_bundle, '-name', '.DS_Store', '-delete'], check=True)
+
+                # 2. Run dot_clean to merge AppleDouble files
+                print("  - Running dot_clean...")
+                subprocess.run(['dot_clean', '-m', app_bundle], check=False)
+
+                # 2. Remove existing signatures
+                print("  - Removing extended attributes...")
+                subprocess.run(['xattr', '-cr', app_bundle], check=True)
+                print("  - Removing existing signatures...")
+                subprocess.run(['codesign', '--remove-signature', app_bundle], check=False)
                 
-                # 3. Re-sign the bundle ad-hoc
+                # 4. Re-sign the bundle ad-hoc
                 print("  - Re-signing bundle...")
                 subprocess.run(['codesign', '--force', '--deep', '-s', '-', app_bundle], check=True)
                 print("[SUCCESS] App bundle signed and cleaned.")
@@ -178,6 +346,10 @@ def build():
                 print(f"[WARNING] Failed to sign app bundle: {e}")
             except Exception as e:
                 print(f"[WARNING] An error occurred during signing fix: {e}")
+
+        # Touch the app to force Finder to refresh (fixes "can't see it" issue)
+        print("  - Touching app bundle to refresh Finder...")
+        subprocess.run(['touch', app_bundle], check=False)
 
     print(f"Build complete! Executable is in dist/Short Circuit/")
 

@@ -99,29 +99,30 @@ class SolarMap:
       return
 
     if con_type == ConnectionType.WORMHOLE:
-      [
-        sig_source,
-        code_source,
-        sig_dest,
-        code_dest,
-        wh_size,
-        wh_life,
-        wh_mass,
-        time_elapsed,
-      ] = con_info
+      sig_source = con_info[0]
+      code_source = con_info[1]
+      sig_dest = con_info[2]
+      code_dest = con_info[3]
+      wh_size = con_info[4]
+      wh_life = con_info[5]
+      wh_mass = con_info[6]
+      time_elapsed = con_info[7]
+      source_name = con_info[8] if len(con_info) > 8 else None
+
+      info_fwd = [sig_source, code_source, wh_size, wh_life, wh_mass, time_elapsed]
+      info_bwd = [sig_dest, code_dest, wh_size, wh_life, wh_mass, time_elapsed]
+
+      if source_name:
+        info_fwd.append(source_name)
+        info_bwd.append(source_name)
+
       self.systems_list[source].add_neighbor(
         self.systems_list[destination],
-        (
-          ConnectionType.WORMHOLE,
-          [sig_source, code_source, wh_size, wh_life, wh_mass, time_elapsed]
-        )
+        (ConnectionType.WORMHOLE, info_fwd)
       )
       self.systems_list[destination].add_neighbor(
         self.systems_list[source],
-        (
-          ConnectionType.WORMHOLE,
-          [sig_dest, code_dest, wh_size, wh_life, wh_mass, time_elapsed]
-        )
+        (ConnectionType.WORMHOLE, info_bwd)
       )
       return
 
@@ -148,7 +149,10 @@ class SolarMap:
     if con_type != ConnectionType.WORMHOLE:
       return False, 0
 
-    [_, _, wh_size, wh_life, wh_mass, time_elapsed] = con_info
+    wh_size = con_info[2]
+    wh_life = con_info[3]
+    wh_mass = con_info[4]
+    time_elapsed = con_info[5]
 
     if restrictions["size_restriction"].get(wh_size, False):
       return False, 0

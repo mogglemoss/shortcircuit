@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Tuple, Dict, Any, List, Optional
 
-import httpx
 from shortcircuit import USER_AGENT
 from .evedb import EveDb, WormholeSize, WormholeTimespan, WormholeMassspan
 from .solarmap import SolarMap, ConnectionType
@@ -29,6 +28,8 @@ class Pathfinder:
     return asyncio.run(self._test_credentials_task())
 
   async def _test_credentials_task(self) -> Tuple[bool, str]:
+    import httpx
+
     try:
       async with httpx.AsyncClient(verify=True) as client:
         # Check if we can reach the server
@@ -47,6 +48,8 @@ class Pathfinder:
       return False, f"Connection failed: {e}"
 
   async def _augment_map_async(self, solar_map: SolarMap) -> int:
+    import httpx
+
     # Construct the API endpoint. 
     # If the user provided a base URL (e.g. https://pathfinder.example.com),
     # we assume the API is at /api/connections or similar.
@@ -158,6 +161,7 @@ class Pathfinder:
           wh_life,
           wh_mass,
           time_elapsed,
+          "Pathfinder",
         ],
       )
       return True

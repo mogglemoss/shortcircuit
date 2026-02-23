@@ -5,13 +5,11 @@ import json
 from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
-import httpx
 from shortcircuit import USER_AGENT
 
 from .evedb import EveDb, WormholeSize, WormholeMassspan, WormholeTimespan
 from .logger import Logger
 from .solarmap import ConnectionType, SolarMap
-from .utility.configuration import Configuration
 
 
 class TripwireESIToken(TypedDict):
@@ -135,7 +133,7 @@ class Tripwire:
     self.url = url.strip().rstrip('/')
     self.name = name
     self.chain: TripwireChain = self._empty_chain()
-    self.cookies: Optional[httpx.Cookies] = None
+    self.cookies = None
 
   def get_name(self) -> str:
     return self.name
@@ -155,7 +153,9 @@ class Tripwire:
       'discord_integration': False,
     }
 
-  async def _login_async(self, client: httpx.AsyncClient) -> bool:
+  async def _login_async(self, client) -> bool:
+    import httpx
+
     Logger.debug('Logging in...')
 
     login_url = '{}/login.php'.format(self.url)
@@ -214,6 +214,9 @@ class Tripwire:
     return asyncio.run(self._test_credentials_task(proxy))
 
   async def _test_credentials_task(self, proxy: str = None) -> Tuple[bool, str]:
+    from .utility.configuration import Configuration
+    import httpx
+
     client_kwargs = {'verify': True}
     if proxy:
       client_kwargs['proxy'] = str(proxy)
@@ -262,7 +265,9 @@ class Tripwire:
     except Exception as e:
       return False, 'Error: {}'.format(e)
 
-  async def _fetch_api_refresh_async(self, client: httpx.AsyncClient, system_id="30000142") -> Optional[RawTripwireChain]:
+  async def _fetch_api_refresh_async(self, client, system_id="30000142") -> Optional[RawTripwireChain]:
+    import httpx
+
     Logger.debug('Getting {}...'.format(system_id))
     refresh_url = '{}/refresh.php'.format(self.url)
     payload = {
@@ -316,6 +321,9 @@ class Tripwire:
     }
 
   async def _get_chain_task(self, system_id: str) -> bool:
+    from .utility.configuration import Configuration
+    import httpx
+
     proxy_setting = Configuration.settings.value('proxy')
     client_kwargs = {'verify': True}
     if proxy_setting:
@@ -499,6 +507,7 @@ class Tripwire:
         wh_life,
         wh_mass,
         time_elapsed,
+        "Tripwire",
       ],
     )
     return True

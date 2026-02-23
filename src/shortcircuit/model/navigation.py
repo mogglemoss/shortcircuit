@@ -84,7 +84,15 @@ class Navigation:
     if weight_back[0] != ConnectionType.WORMHOLE:
       return
 
-    [wh_sig, wh_code, wh_size, wh_life, wh_mass, time_elapsed] = weight_back[1]
+    data = weight_back[1]
+    wh_sig = data[0]
+    wh_code = data[1]
+    wh_size = data[2]
+    wh_life = data[3]
+    wh_mass = data[4]
+    time_elapsed = data[5]
+    source_name = data[6] if len(data) > 6 else None
+
     # Wormhole size
     wh_size_text = "Unknown"
     if wh_size == WormholeSize.SMALL:
@@ -113,9 +121,13 @@ class Navigation:
       wh_mass_text = "Critical"
 
     # Return signature
-    return "Return sig: {0} [{1}], Updated: {5}h ago\nSize: {2}, Life: {3}, Mass: {4}".format(
+    info_text = "Return sig: {0} [{1}], Updated: {5}h ago\nSize: {2}, Life: {3}, Mass: {4}".format(
       wh_sig, wh_code, wh_size_text, wh_life_text, wh_mass_text, time_elapsed
     )
+
+    if source_name:
+      info_text += "\nSource: {}".format(source_name)
+    return info_text
 
   def route(self, source: int, destination: int):
     path = self.solar_map.shortest_path(

@@ -146,10 +146,7 @@ SystemDescription = TypedDict(
 
 class SolarSystem:
 
-  MAP_LOCATION_WORMHOLE_CLASSES = {
-    int(row[0]): int(row[1])
-    for row in get_csv_reader('mapLocationWormholeClasses.csv')
-  }
+  MAP_LOCATION_WORMHOLE_CLASSES = {}
 
   def __init__(
     self,
@@ -480,6 +477,11 @@ class EveDb(metaclass=Singleton):
     filename_gates = 'mapSolarSystemJumps.csv'
     filename_descriptions = 'mapSolarSystems.csv'
     filename_regions = 'mapRegions.csv'
+
+    SolarSystem.MAP_LOCATION_WORMHOLE_CLASSES = {
+      int(row[0]): int(row[1])
+      for row in get_csv_reader('mapLocationWormholeClasses.csv')
+    }
 
     self._init_gates(get_csv_reader(filename_gates))
     self._init_system_descriptions(get_csv_reader(filename_descriptions))

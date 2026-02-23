@@ -14,12 +14,8 @@ import qdarktheme
 
 from . import __appname__, __appslug__, __date__ as last_update, __version__
 import shortcircuit.resources
-from .model.esi_processor import ESIProcessor
 from .model.evedb import EveDb, Restrictions, SpaceType, WormholeSize
 from .model.logger import Logger
-from .model.navigation import Navigation
-from .model.navprocessor import NavProcessor
-from .model.versioncheck import VersionCheck
 
 
 class StateEVEConnection(TypedDict):
@@ -44,6 +40,12 @@ class StatePathfinder(TypedDict):
   enabled: bool
   error: Union[str, None]
 
+
+class StateWanderer(TypedDict):
+  connections: int
+  enabled: bool
+  error: Union[str, None]
+
 class TripwireDialog(QtWidgets.QDialog):
   """
   Tripwire Configuration Window
@@ -64,6 +66,11 @@ class TripwireDialog(QtWidgets.QDialog):
     pf_url,
     pf_token,
     pf_enabled,
+    test_wanderer_callback,
+    wanderer_url,
+    wanderer_map_id,
+    wanderer_token,
+    wanderer_enabled,
     parent=None,
   ):
     super().__init__(parent)
@@ -170,6 +177,38 @@ class TripwireDialog(QtWidgets.QDialog):
     pf_layout.addWidget(self.checkBox_pf_enabled)
     pf_layout.addStretch()
 
+    # --- Wanderer Tab ---
+    self.tab_wanderer = QtWidgets.QWidget()
+    self.tabs.addTab(self.tab_wanderer, "Wanderer")
+    wanderer_layout = QtWidgets.QVBoxLayout(self.tab_wanderer)
+
+    wanderer_form = QtWidgets.QFormLayout()
+    self.lineEdit_wanderer_url = QtWidgets.QLineEdit(wanderer_url)
+    self.lineEdit_wanderer_url.setPlaceholderText("https://wanderer.example.com")
+    wanderer_form.addRow("URL:", self.lineEdit_wanderer_url)
+
+    self.lineEdit_wanderer_map_id = QtWidgets.QLineEdit(wanderer_map_id)
+    self.lineEdit_wanderer_map_id.setPlaceholderText("map-slug")
+    wanderer_form.addRow("Map ID:", self.lineEdit_wanderer_map_id)
+
+    self.lineEdit_wanderer_token = QtWidgets.QLineEdit(wanderer_token)
+    self.lineEdit_wanderer_token.setEchoMode(QtWidgets.QLineEdit.Password)
+    wanderer_form.addRow("Token:", self.lineEdit_wanderer_token)
+
+    self.pushButton_wanderer_test = QtWidgets.QPushButton("Test Connection")
+    self.pushButton_wanderer_test.clicked.connect(lambda: test_wanderer_callback(
+        self.lineEdit_wanderer_url.text(),
+        self.lineEdit_wanderer_map_id.text(),
+        self.lineEdit_wanderer_token.text()
+    ))
+    wanderer_form.addRow("", self.pushButton_wanderer_test)
+    wanderer_layout.addLayout(wanderer_form)
+
+    self.checkBox_wanderer_enabled = QtWidgets.QCheckBox("Enable Wanderer")
+    self.checkBox_wanderer_enabled.setChecked(wanderer_enabled)
+    wanderer_layout.addWidget(self.checkBox_wanderer_enabled)
+    wanderer_layout.addStretch()
+
     # Buttons
     button_box = QtWidgets.QDialogButtonBox(
       QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
@@ -206,8 +245,7 @@ class AboutDialog(QtWidgets.QDialog):
     self.label_title.setFont(font)
     self.label_title.setAlignment(QtCore.Qt.AlignCenter)
     self.label_title.setText(
-      '{} v{} ({})'.format(
-        __appname__,
+      '{} v{} ({})_,
         __version__,
         last_update,
       )
@@ -231,7 +269,7 @@ class AboutDialog(QtWidgets.QDialog):
       "<p>Original author – Valtyr Farshield. </p>"
       "<p><span style=\" font-weight:600;\">Maintainer list</span></p>"
       "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
-      "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Rustam @SecondFry Gubaydullin (Lenai Chelien).</li></ul>"
+      "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; te
       "<p><span style=\" font-weight:600;\">Credits</span></p>"
       "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
       "<li style=\" margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Daimian Mercer (Tripwire). </li>"
@@ -277,7 +315,7 @@ class AboutDialog(QtWidgets.QDialog):
     )
 
   def open_logs(self):
-    app_dirs = AppDirs(__appslug__, "secondfry", version=__version__)
+    app_dirs = AppDirs(__appslug__, "mogglemoss", version=__version__)
     log_dir = app_dirs.user_log_dir
     if os.path.exists(log_dir):
       QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(log_dir))
@@ -340,10 +378,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
   def __init__(self, parent=None):
     super().__init__(parent)
+    # Ensure Configuration is initialized in the main thread to prevent QSettings threading issues
+    from .model.utility.configuration import Configuration
+    import ssl
+
     self.settings = QtCore.QSettings(
       QtCore.QSettings.IniFormat,
       QtCore.QSettings.UserScope,
-      __appname__,
+      "mogglemoss",
+      "shortcircuit"
     )
 
     self.tripwire_url = None
@@ -358,6 +401,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_token = None
     self.pathfinder_enabled = False
 
+    # Wanderer settings
+    self.wanderer_url = None
+    self.wanderer_map_id = None
+    self.wanderer_token = None
+    self.wanderer_enabled = False
+
     self.state_eve_connection = StateEVEConnection({
       "connected": False, "char_name": None, "error": None
     })
@@ -366,6 +415,9 @@ class MainWindow(QtWidgets.QMainWindow):
     })
     self.state_tripwire = StateTripwire({"connections": 0, "error": None})
     self.state_pathfinder = StatePathfinder({
+      "connections": 0, "enabled": False, "error": None
+    })
+    self.state_wanderer = StateWanderer({
       "connections": 0, "enabled": False, "error": None
     })
     
@@ -391,6 +443,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Read resources
     self.eve_db = EveDb()
+    from .model.navigation import Navigation
     self.nav = Navigation(self, self.eve_db)
 
     # Apply Sidebar Layout
@@ -417,6 +470,11 @@ class MainWindow(QtWidgets.QMainWindow):
     self.statusBar().addPermanentWidget(self.status_pathfinder, 0)
     self._status_pathfinder_update()
 
+    self.status_wanderer = QtWidgets.QLabel()
+    self.status_wanderer.setContentsMargins(5, 0, 5, 0)
+    self.statusBar().addPermanentWidget(self.status_wanderer, 0)
+    self._status_wanderer_update()
+
     self.status_eve_connection = QtWidgets.QLabel()
     self.status_eve_connection.setContentsMargins(5, 0, 5, 0)
     self.statusBar().addPermanentWidget(self.status_eve_connection, 0)
@@ -431,6 +489,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # NavProcessor thread
     self.worker_thread = QtCore.QThread()
     Logger.register_thread(self.worker_thread, 'worker_thread / NavProcessor')
+    from .model.navprocessor import NavProcessor
     self.nav_processor = NavProcessor(self.nav)
     self.nav_processor.moveToThread(self.worker_thread)
     self.nav_processor.finished.connect(self.worker_thread_done)
@@ -440,6 +499,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # Version check thread
     self.version_thread = QtCore.QThread()
     Logger.register_thread(self.version_thread, 'version_thread / VersionCheck')
+    from .model.versioncheck import VersionCheck
     self.version_check = VersionCheck()
     self.version_check.moveToThread(self.version_thread)
     self.version_check.finished.connect(self.version_check_done)
@@ -458,6 +518,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ESI
     self.eve_connected = False
+    from .model.esi_processor import ESIProcessor
     self.esip = ESIProcessor()
     self.esip.login_response.connect(self.login_handler)
     self.esip.logout_response.connect(self.logout_handler)
@@ -465,7 +526,7 @@ class MainWindow(QtWidgets.QMainWindow):
     self.esip.destination_response.connect(self.destination_handler)
 
     # Start version check
-    self.version_thread.start()
+    QtCore.QTimer.singleShot(1000, self.version_thread.start)
 
     # Apply custom theme
     self._apply_styles()
@@ -989,6 +1050,13 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_enabled = self.settings.value('enabled', 'false') == 'true'
     self.settings.endGroup()
 
+    self.settings.beginGroup('Wanderer')
+    self.wanderer_url = self.settings.value('url', '')
+    self.wanderer_map_id = self.settings.value('map_id', '')
+    self.wanderer_token = self.settings.value('token', '')
+    self.wanderer_enabled = self.settings.value('enabled', 'false') == 'true'
+    self.settings.endGroup()
+
     self.update_auto_refresh_state()
     self.nav.setup_mappers()
 
@@ -1072,6 +1140,13 @@ class MainWindow(QtWidgets.QMainWindow):
     self.settings.setValue('url', self.pathfinder_url)
     self.settings.setValue('token', self.pathfinder_token)
     self.settings.setValue('enabled', self.pathfinder_enabled)
+    self.settings.endGroup()
+
+    self.settings.beginGroup('Wanderer')
+    self.settings.setValue('url', self.wanderer_url)
+    self.settings.setValue('map_id', self.wanderer_map_id)
+    self.settings.setValue('token', self.wanderer_token)
+    self.settings.setValue('enabled', self.wanderer_enabled)
     self.settings.endGroup()
 
   def write_settings(self):
@@ -1559,6 +1634,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.state_pathfinder["error"] = "error" if pf_connections < 0 else None
     self._status_pathfinder_update()
 
+    # Wanderer
+    wanderer_connections = results.get("Wanderer", 0)
+    self.state_wanderer["connections"] = wanderer_connections
+    self.state_wanderer["error"] = "error" if wanderer_connections < 0 else None
+    self._status_wanderer_update()
+
     if self.tripwire_user and self.tripwire_pass:
       self.pushButton_trip_get.setEnabled(True)
     self.pushButton_find_path.setEnabled(True)
@@ -1614,6 +1695,11 @@ class MainWindow(QtWidgets.QMainWindow):
       self.pathfinder_url,
       self.pathfinder_token,
       self.pathfinder_enabled,
+      self.test_wanderer_connection,
+      self.wanderer_url,
+      self.wanderer_map_id,
+      self.wanderer_token,
+      self.wanderer_enabled,
     )
 
     if not tripwire_dialog.exec():
@@ -1628,6 +1714,11 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_token = tripwire_dialog.lineEdit_pf_token.text()
     self.pathfinder_enabled = tripwire_dialog.checkBox_pf_enabled.isChecked()
 
+    self.wanderer_url = tripwire_dialog.lineEdit_wanderer_url.text()
+    self.wanderer_map_id = tripwire_dialog.lineEdit_wanderer_map_id.text()
+    self.wanderer_token = tripwire_dialog.lineEdit_wanderer_token.text()
+    self.wanderer_enabled = tripwire_dialog.checkBox_wanderer_enabled.isChecked()
+
     self.nav.setup_mappers()
     self.state_evescout["enabled"
                         ] = tripwire_dialog.checkBox_evescout.isChecked()
@@ -1637,6 +1728,7 @@ class MainWindow(QtWidgets.QMainWindow):
     self.update_auto_refresh_state()
 
     self._status_evescout_update()
+    self._status_wanderer_update()
     self._status_pathfinder_update()
     self.write_settings_tripwire()
 
@@ -1660,6 +1752,12 @@ class MainWindow(QtWidgets.QMainWindow):
       self.pushButton_trip_get.setEnabled(False)
       self.pushButton_find_path.setEnabled(False)
       self.nav_processor.evescout_enable = self.state_evescout["enabled"]
+
+      self.nav_processor.wanderer_enabled = self.wanderer_enabled
+      self.nav_processor.wanderer_url = self.wanderer_url
+      self.nav_processor.wanderer_map_id = self.wanderer_map_id
+      self.nav_processor.wanderer_token = self.wanderer_token
+
       self.worker_thread.start()
     else:
       self.state_tripwire['error'] = "error. Process is already running."
@@ -1699,6 +1797,21 @@ class MainWindow(QtWidgets.QMainWindow):
       QtWidgets.QApplication.restoreOverrideCursor()
 
     self._message_box("Pathfinder Connection", f"{'Success' if success else 'Failed'}: {message}")
+
+  def test_wanderer_connection(self, url, map_id, token):
+    from shortcircuit.model.wanderer import Wanderer
+
+    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+    try:
+      wd = Wanderer(url, map_id, token)
+      success, message = wd.test_credentials()
+    except Exception as e:
+      success = False
+      message = str(e)
+    finally:
+      QtWidgets.QApplication.restoreOverrideCursor()
+
+    self._message_box("Wanderer Connection", f"{'Success' if success else 'Failed'}: {message}")
 
   @QtCore.Slot()
   def auto_refresh_triggered(self):
@@ -1745,9 +1858,11 @@ class MainWindow(QtWidgets.QMainWindow):
       self.state_evescout["connections"] = 0
       self.state_tripwire["connections"] = 0
       self.state_pathfinder["connections"] = 0
+      self.state_wanderer["connections"] = 0
       self._status_pathfinder_update()
       self._status_evescout_update()
       self._status_tripwire_update()
+      self._status_wanderer_update()
 
   @QtCore.Slot()
   def line_edit_system_avoid_name_return(self):
@@ -1864,7 +1979,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 def run():
+  # Enable faulthandler to dump traceback on segfaults
+  import faulthandler
+  faulthandler.enable()
+  print("Short Circuit starting up...")
+
+  # Hook into the system exception handler to log crashes
+  def exception_hook(exctype, value, tb):
+    Logger.critical("Unhandled exception caught", exc_info=(exctype, value, tb))
+    sys.__excepthook__(exctype, value, tb)
+  sys.excepthook = exception_hook
+
   appl = QtWidgets.QApplication(sys.argv)
+  appl.setOrganizationName("mogglemoss")
+  appl.setApplicationName("shortcircuit")
   if hasattr(qdarktheme, 'setup_theme'):
     qdarktheme.setup_theme()
   elif hasattr(qdarktheme, 'load_stylesheet'):

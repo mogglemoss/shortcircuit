@@ -4,7 +4,6 @@ import json
 import os
 from datetime import datetime, timedelta
 
-import httpx
 import semver
 from PySide6 import QtCore
 from dateutil import parser
@@ -12,7 +11,6 @@ from dateutil.tz import tzutc
 
 from shortcircuit import __version__ as app_version
 from .logger import Logger
-from .utility.configuration import Configuration
 
 
 class VersionCheck(QtCore.QObject):
@@ -37,6 +35,8 @@ class VersionCheck(QtCore.QObject):
       self.finished.emit(None)
 
   async def _process_async(self):
+    import httpx
+
     try:
       async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -58,6 +58,8 @@ class VersionCheck(QtCore.QObject):
 
   @staticmethod
   def should_emit_response(response):
+    from .utility.configuration import Configuration
+
     if response.status_code != 200:
       Logger.error('Response code is not 200')
       Logger.error(response)
