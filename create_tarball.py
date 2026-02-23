@@ -4,10 +4,16 @@ import sys
 import shutil
 
 def create_tarball():
-    app_name = "Short Circuit"
+    # Determine platform-specific names
+    if sys.platform == 'darwin':
+        app_name = "Short Circuit.app"
+        archive_name = "ShortCircuit-macOS.tar.gz"
+    else:
+        app_name = "Short Circuit"
+        archive_name = "ShortCircuit-Linux.tar.gz"
+
     dist_dir = "dist"
     build_path = os.path.join(dist_dir, app_name)
-    archive_name = "ShortCircuit-Linux.tar.gz"
     archive_path = os.path.join(dist_dir, archive_name)
 
     if not os.path.exists(build_path):
