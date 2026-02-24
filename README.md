@@ -24,7 +24,6 @@ Short Circuit pulls live chain data directly from the most popular wormhole mapp
 
 * **[Eve-Scout](https://eve-scout.com/)** (Automatic Thera & Turnur connections)
 * **[Tripwire](https://tripwire.eve-apps.com/)**
-* **[Pathfinder](https://www.pathfinder-w.space/)**
 * **[Wanderer](https://wanderer.space/)**
 
 ## 🚀 Installation
