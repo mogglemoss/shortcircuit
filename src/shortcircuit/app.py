@@ -7,6 +7,7 @@ import sys
 import time
 from functools import partial
 from typing import Dict, List, TypedDict, Union
+import webbrowser
 
 from appdirs import AppDirs
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -713,6 +714,7 @@ class MainWindow(QtWidgets.QMainWindow):
         border: 1px solid #3e4451; 
         border-radius: 4px; 
         margin-top: 10px; 
+        padding-top: 10px;
         font-weight: bold; 
         color: #abb2bf;
     }
@@ -895,6 +897,8 @@ class MainWindow(QtWidgets.QMainWindow):
     layout.addWidget(self.lineEdit_source)
     layout.addWidget(QtWidgets.QLabel("Destination:"))
     layout.addWidget(self.lineEdit_destination)
+
+    layout.addSpacing(10)
 
     row_actions = QtWidgets.QHBoxLayout()
     row_actions.addWidget(self.pushButton_find_path)
@@ -1676,10 +1680,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
   @QtCore.Slot()
   def btn_eve_login_clicked(self):
-    if not self.state_eve_connection["connected"]:
-      self.esip.login()
-    else:
-      self.esip.logout()
+    try:
+      if not self.state_eve_connection["connected"]:
+        self.esip.login()
+      else:
+        self.esip.logout()
+    except Exception as e:
+      Logger.error(f"EVE Login error: {e}")
+      self._message_box("Login Error", f"Unable to initiate login: {e}")
 
   @QtCore.Slot()
   def btn_player_location_clicked(self):
@@ -2004,6 +2012,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def run():
   appl = QtWidgets.QApplication(sys.argv)
+
+  # Patch QDesktopServices.openUrl on Linux to use python's webbrowser
+  # This fixes issues where PyInstaller builds fail to launch the default browser
+  if sys.platform == 'linux':
+    Logger.info("Patching QDesktopServices.openUrl for Linux")
+    def open_url_linux(url):
+      url_str = url.toString() if isinstance(url, QtCore.QUrl) else str(url)
+      Logger.debug(f"Opening URL via webbrowser: {url_str}")
+      return webbrowser.open(url_str)
+    QtGui.QDesktopServices.openUrl = open_url_linux
+
   if hasattr(qdarktheme, 'setup_theme'):
     qdarktheme.setup_theme()
   elif hasattr(qdarktheme, 'load_stylesheet'):
