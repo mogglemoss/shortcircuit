@@ -16,7 +16,7 @@ jobs:
       contents: write
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-13]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-12]
 
     steps:
     - name: Checkout repository
