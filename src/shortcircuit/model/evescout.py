@@ -106,6 +106,7 @@ class EveScout:
               wh_life,
               wh_mass,
               time_elapsed,
+              self.get_name(),
             ],
           )
 

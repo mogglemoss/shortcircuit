@@ -44,6 +44,13 @@ class StatePathfinder(TypedDict):
   enabled: bool
   error: Union[str, None]
 
+
+class StateWanderer(TypedDict):
+  connections: int
+  enabled: bool
+  error: Union[str, None]
+
+
 class TripwireDialog(QtWidgets.QDialog):
   """
   Tripwire Configuration Window
@@ -64,6 +71,11 @@ class TripwireDialog(QtWidgets.QDialog):
     pf_url,
     pf_token,
     pf_enabled,
+    test_wanderer_callback,
+    wanderer_url,
+    wanderer_map_id,
+    wanderer_token,
+    wanderer_enabled,
     parent=None,
   ):
     super().__init__(parent)
@@ -169,6 +181,38 @@ class TripwireDialog(QtWidgets.QDialog):
     self.checkBox_pf_enabled.setChecked(pf_enabled)
     pf_layout.addWidget(self.checkBox_pf_enabled)
     pf_layout.addStretch()
+
+    # --- Wanderer Tab ---
+    self.tab_wanderer = QtWidgets.QWidget()
+    self.tabs.addTab(self.tab_wanderer, "Wanderer")
+    wanderer_layout = QtWidgets.QVBoxLayout(self.tab_wanderer)
+
+    wanderer_form = QtWidgets.QFormLayout()
+    self.lineEdit_wanderer_url = QtWidgets.QLineEdit(wanderer_url)
+    self.lineEdit_wanderer_url.setPlaceholderText("https://wanderer.example.com")
+    wanderer_form.addRow("URL:", self.lineEdit_wanderer_url)
+
+    self.lineEdit_wanderer_map_id = QtWidgets.QLineEdit(wanderer_map_id)
+    self.lineEdit_wanderer_map_id.setPlaceholderText("map-slug")
+    wanderer_form.addRow("Map ID:", self.lineEdit_wanderer_map_id)
+
+    self.lineEdit_wanderer_token = QtWidgets.QLineEdit(wanderer_token)
+    self.lineEdit_wanderer_token.setEchoMode(QtWidgets.QLineEdit.Password)
+    wanderer_form.addRow("Token:", self.lineEdit_wanderer_token)
+
+    self.pushButton_wanderer_test = QtWidgets.QPushButton("Test Connection")
+    self.pushButton_wanderer_test.clicked.connect(lambda: test_wanderer_callback(
+        self.lineEdit_wanderer_url.text(),
+        self.lineEdit_wanderer_map_id.text(),
+        self.lineEdit_wanderer_token.text()
+    ))
+    wanderer_form.addRow("", self.pushButton_wanderer_test)
+    wanderer_layout.addLayout(wanderer_form)
+
+    self.checkBox_wanderer_enabled = QtWidgets.QCheckBox("Enable Wanderer")
+    self.checkBox_wanderer_enabled.setChecked(wanderer_enabled)
+    wanderer_layout.addWidget(self.checkBox_wanderer_enabled)
+    wanderer_layout.addStretch()
 
     # Buttons
     button_box = QtWidgets.QDialogButtonBox(
@@ -358,6 +402,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_token = None
     self.pathfinder_enabled = False
 
+    # Wanderer settings
+    self.wanderer_url = None
+    self.wanderer_map_id = None
+    self.wanderer_token = None
+    self.wanderer_enabled = False
+
     self.state_eve_connection = StateEVEConnection({
       "connected": False, "char_name": None, "error": None
     })
@@ -366,6 +416,9 @@ class MainWindow(QtWidgets.QMainWindow):
     })
     self.state_tripwire = StateTripwire({"connections": 0, "error": None})
     self.state_pathfinder = StatePathfinder({
+      "connections": 0, "enabled": False, "error": None
+    })
+    self.state_wanderer = StateWanderer({
       "connections": 0, "enabled": False, "error": None
     })
     
@@ -416,6 +469,11 @@ class MainWindow(QtWidgets.QMainWindow):
     self.status_pathfinder.setContentsMargins(5, 0, 5, 0)
     self.statusBar().addPermanentWidget(self.status_pathfinder, 0)
     self._status_pathfinder_update()
+
+    self.status_wanderer = QtWidgets.QLabel()
+    self.status_wanderer.setContentsMargins(5, 0, 5, 0)
+    self.statusBar().addPermanentWidget(self.status_wanderer, 0)
+    self._status_wanderer_update()
 
     self.status_eve_connection = QtWidgets.QLabel()
     self.status_eve_connection.setContentsMargins(5, 0, 5, 0)
@@ -989,6 +1047,13 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_enabled = self.settings.value('enabled', 'false') == 'true'
     self.settings.endGroup()
 
+    self.settings.beginGroup('Wanderer')
+    self.wanderer_url = self.settings.value('url', '')
+    self.wanderer_map_id = self.settings.value('map_id', '')
+    self.wanderer_token = self.settings.value('token', '')
+    self.wanderer_enabled = self.settings.value('enabled', 'false') == 'true'
+    self.settings.endGroup()
+
     self.update_auto_refresh_state()
     self.nav.setup_mappers()
 
@@ -1072,6 +1137,13 @@ class MainWindow(QtWidgets.QMainWindow):
     self.settings.setValue('url', self.pathfinder_url)
     self.settings.setValue('token', self.pathfinder_token)
     self.settings.setValue('enabled', self.pathfinder_enabled)
+    self.settings.endGroup()
+
+    self.settings.beginGroup('Wanderer')
+    self.settings.setValue('url', self.wanderer_url)
+    self.settings.setValue('map_id', self.wanderer_map_id)
+    self.settings.setValue('token', self.wanderer_token)
+    self.settings.setValue('enabled', self.wanderer_enabled)
     self.settings.endGroup()
 
   def write_settings(self):
@@ -1498,6 +1570,25 @@ class MainWindow(QtWidgets.QMainWindow):
       MessageType.OK
     )
 
+  def _status_wanderer_update(self):
+    if not self.wanderer_enabled:
+      self._label_message(self.status_wanderer, "Wanderer: disabled", MessageType.INFO)
+      return
+
+    if self.state_wanderer["error"]:
+      self._label_message(self.status_wanderer, "Wanderer: error", MessageType.ERROR)
+      return
+
+    if not self.state_wanderer["connections"]:
+      self._label_message(self.status_wanderer, "Wanderer: enabled", MessageType.INFO)
+      return
+
+    self._label_message(
+      self.status_wanderer,
+      "Wanderer: {} connections".format(self.state_wanderer["connections"]),
+      MessageType.OK
+    )
+
   @QtCore.Slot(str)
   def login_handler(self, is_ok, char_name):
     self.state_eve_connection["connected"] = is_ok
@@ -1559,6 +1650,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.state_pathfinder["error"] = "error" if pf_connections < 0 else None
     self._status_pathfinder_update()
 
+    # Wanderer
+    wanderer_connections = results.get("Wanderer", 0)
+    self.state_wanderer["connections"] = wanderer_connections
+    self.state_wanderer["error"] = "error" if wanderer_connections < 0 else None
+    self._status_wanderer_update()
+
     if self.tripwire_user and self.tripwire_pass:
       self.pushButton_trip_get.setEnabled(True)
     self.pushButton_find_path.setEnabled(True)
@@ -1614,6 +1711,11 @@ class MainWindow(QtWidgets.QMainWindow):
       self.pathfinder_url,
       self.pathfinder_token,
       self.pathfinder_enabled,
+      self.test_wanderer_connection,
+      self.wanderer_url,
+      self.wanderer_map_id,
+      self.wanderer_token,
+      self.wanderer_enabled,
     )
 
     if not tripwire_dialog.exec():
@@ -1628,6 +1730,11 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pathfinder_token = tripwire_dialog.lineEdit_pf_token.text()
     self.pathfinder_enabled = tripwire_dialog.checkBox_pf_enabled.isChecked()
 
+    self.wanderer_url = tripwire_dialog.lineEdit_wanderer_url.text()
+    self.wanderer_map_id = tripwire_dialog.lineEdit_wanderer_map_id.text()
+    self.wanderer_token = tripwire_dialog.lineEdit_wanderer_token.text()
+    self.wanderer_enabled = tripwire_dialog.checkBox_wanderer_enabled.isChecked()
+
     self.nav.setup_mappers()
     self.state_evescout["enabled"
                         ] = tripwire_dialog.checkBox_evescout.isChecked()
@@ -1638,6 +1745,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     self._status_evescout_update()
     self._status_pathfinder_update()
+    self._status_wanderer_update()
     self.write_settings_tripwire()
 
     if self.tripwire_user and self.tripwire_pass:
@@ -1700,6 +1808,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
     self._message_box("Pathfinder Connection", f"{'Success' if success else 'Failed'}: {message}")
 
+  def test_wanderer_connection(self, url, map_id, token):
+    from shortcircuit.model.wanderer import Wanderer
+
+    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+    try:
+      wd = Wanderer(url, map_id, token)
+      success, message = wd.test_credentials()
+    except Exception as e:
+      success = False
+      message = str(e)
+    finally:
+      QtWidgets.QApplication.restoreOverrideCursor()
+
+    self._message_box("Wanderer Connection", f"{'Success' if success else 'Failed'}: {message}")
+
   @QtCore.Slot()
   def auto_refresh_triggered(self):
     if not self.worker_thread.isRunning() and self.tripwire_user and self.tripwire_pass:
@@ -1745,7 +1868,9 @@ class MainWindow(QtWidgets.QMainWindow):
       self.state_evescout["connections"] = 0
       self.state_tripwire["connections"] = 0
       self.state_pathfinder["connections"] = 0
+      self.state_wanderer["connections"] = 0
       self._status_pathfinder_update()
+      self._status_wanderer_update()
       self._status_evescout_update()
       self._status_tripwire_update()
 

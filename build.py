@@ -105,6 +105,7 @@ def build():
         'qdarktheme',
         'typing_extensions',
         'appdirs',
+        'shortcircuit.model.wanderer',
     ])
 
     # Configure PyInstaller arguments
