@@ -16,6 +16,7 @@ from . import __appname__, __appslug__, __date__ as last_update, __version__
 import shortcircuit.resources
 from .model.esi_processor import ESIProcessor
 from .model.evedb import EveDb, Restrictions, SpaceType, WormholeSize
+from .model.solarmap import ConnectionType
 from .model.logger import Logger
 from .model.navigation import Navigation
 from .model.navprocessor import NavProcessor
@@ -167,7 +168,12 @@ class TripwireDialog(QtWidgets.QDialog):
 
     self.lineEdit_pf_token = QtWidgets.QLineEdit(pf_token)
     self.lineEdit_pf_token.setEchoMode(QtWidgets.QLineEdit.Password)
+    self.lineEdit_pf_token.setToolTip("Check your Pathfinder Profile/Settings for API access")
     pf_form.addRow("API Token:", self.lineEdit_pf_token)
+
+    lbl_pf_help = QtWidgets.QLabel("Look in: Profile > Settings > API Access")
+    lbl_pf_help.setStyleSheet("color: #abb2bf; font-style: italic; font-size: 11px;")
+    pf_form.addRow("", lbl_pf_help)
 
     self.pushButton_pf_test = QtWidgets.QPushButton("Test Connection")
     self.pushButton_pf_test.clicked.connect(lambda: test_pf_callback(
@@ -317,11 +323,11 @@ class AboutDialog(QtWidgets.QDialog):
   def icon_click(event):
     event.accept()
     QtGui.QDesktopServices.openUrl(
-      QtCore.QUrl("https://github.com/secondfry/shortcircuit")
+      QtCore.QUrl("https://github.com/mogglemoss/shortcircuit")
     )
 
   def open_logs(self):
-    app_dirs = AppDirs(__appslug__, "secondfry", version=__version__)
+    app_dirs = AppDirs(__appslug__, "mogglemoss", version=__version__)
     log_dir = app_dirs.user_log_dir
     if os.path.exists(log_dir):
       QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(log_dir))
@@ -430,12 +436,13 @@ class MainWindow(QtWidgets.QMainWindow):
     self._create_ui_elements()
 
     # Table configuration
-    self.tableWidget_path.setColumnCount(5)
+    self.tableWidget_path.setColumnCount(6)
     self.tableWidget_path.setHorizontalHeaderLabels([
       "System",
       "Cls",
       "Sec",
       "Instructions",
+      "Source",
       "Additional information",
     ])
     header: QtWidgets.QHeaderView = self.tableWidget_path.horizontalHeader()
@@ -551,7 +558,7 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
 
     # Tripwire
-    self.pushButton_trip_config = QtWidgets.QPushButton("Tripwire")
+    self.pushButton_trip_config = QtWidgets.QPushButton("Map Sources")
     self.pushButton_trip_get = QtWidgets.QPushButton("Get Chain")
     self.pushButton_trip_get.setEnabled(False)
 
@@ -1075,9 +1082,10 @@ class MainWindow(QtWidgets.QMainWindow):
     if win_state:
       self.restoreState(win_state)
     for col_idx, column_width in enumerate(
-      self.settings.value("table_widths", "110,75,75,180").split(',')
+      self.settings.value("table_widths", "110,75,75,180,80,200").split(',')
     ):
-      self.tableWidget_path.setColumnWidth(col_idx, int(column_width))
+      if col_idx < self.tableWidget_path.columnCount():
+        self.tableWidget_path.setColumnWidth(col_idx, int(column_width))
 
     # Avoidance list
     self.groupBox_avoidance.setChecked(
@@ -1154,14 +1162,10 @@ class MainWindow(QtWidgets.QMainWindow):
     # Window state
     self.settings.setValue("win_geometry", self.saveGeometry())
     self.settings.setValue("win_state", self.saveState())
+    
+    widths = [str(self.tableWidget_path.columnWidth(i)) for i in range(self.tableWidget_path.columnCount())]
     self.settings.setValue(
-      "table_widths",
-      ",".join([
-        str(self.tableWidget_path.columnWidth(0)),
-        str(self.tableWidget_path.columnWidth(1)),
-        str(self.tableWidget_path.columnWidth(2)),
-        str(self.tableWidget_path.columnWidth(3)),
-      ]),
+      "table_widths", ",".join(widths)
     )
 
     # Avoidance list
@@ -1286,18 +1290,29 @@ class MainWindow(QtWidgets.QMainWindow):
       color = self.get_system_class_color(route_step['class'])
 
       route_step['security'] = round(route_step['security'], 1)
+      
+      # Extract source
+      source_text = ""
+      path_data = route_step.get('path_data')
+      if path_data and path_data[0] == ConnectionType.WORMHOLE:
+          # path_data[1] is list. Index 8 is source name if present.
+          if len(path_data[1]) > 8:
+              source_text = path_data[1][8]
+      route_step['source'] = source_text
+
       ui_col_id = 0
       for col_id in [
           'name',
           'class',
           'security',
           'path_action',
+          'source',
           'path_info',
       ]:
-        text = str(route_step[col_id])
+        text = str(route_step.get(col_id, ''))
         item = QtWidgets.QTableWidgetItem(text)
 
-        if col_id in ['class', 'security']:
+        if col_id in ['class', 'security', 'source']:
           item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
           item.setForeground(color)
           font = item.font()
@@ -1956,7 +1971,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     QtGui.QDesktopServices.openUrl(
       QtCore.QUrl(
-        'https://github.com/secondfry/shortcircuit/releases/tag/{}'.format(
+        'https://github.com/mogglemoss/shortcircuit/releases/tag/{}'.format(
           latest['tag_name']
         )
       )

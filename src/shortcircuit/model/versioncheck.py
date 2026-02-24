@@ -40,7 +40,7 @@ class VersionCheck(QtCore.QObject):
     try:
       async with httpx.AsyncClient() as client:
         response = await client.get(
-          url='https://api.github.com/repos/secondfry/shortcircuit/releases/latest',
+          url='https://api.github.com/repos/mogglemoss/shortcircuit/releases/latest',
           timeout=3.1,
           follow_redirects=True,
         )

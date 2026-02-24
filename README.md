@@ -7,6 +7,7 @@ Short Circuit (previously known as Pathfinder) is a desktop application which is
 *   **Tripwire Integration**: Added auto-refresh, connection testing, and session cookie persistence.
 *   **User Experience**: Improved tab order, keyboard shortcuts, and clipboard operations.
 *   **Stability**: Enhanced error handling for network requests and thread safety.
+*   **Wanderer Support**: Added integration with Wanderer wormhole mapping tool.
 
 ### Fork Enhancements (v1.0)
 This version is a significant modernization of the original tool:
@@ -17,7 +18,7 @@ This version is a significant modernization of the original tool:
 
 **Features:**
 
-1. Ability to add wormhole connections from [Tripwire](https://tripwire.eve-apps.com/).
+1. Ability to add wormhole connections from [Tripwire](https://tripwire.eve-apps.com/), [Pathfinder](https://github.com/exodus4d/pathfinder), and [Wanderer](https://github.com/Wanderer-Intel/wanderer).
 2. ESI authentication for reading the player location and setting the destination in-game.
 3. Avoidance list.
 4. Wormhole restrictions for: size, life, mass, last updated.
