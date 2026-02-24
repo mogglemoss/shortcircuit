@@ -16,7 +16,7 @@ jobs:
       contents: write
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-13]
 
     steps:
     - name: Checkout repository
@@ -48,6 +48,10 @@ jobs:
     - name: Create DMG (macOS)
       if: runner.os == 'macOS'
       run: python create_dmg.py
+
+    - name: Rename DMG (macOS)
+      if: runner.os == 'macOS'
+      run: mv "dist/Short Circuit.dmg" "dist/ShortCircuit-${{ matrix.os }}.dmg"
 
     - name: Package (Windows)
       if: runner.os == 'Windows'
