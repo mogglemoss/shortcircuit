@@ -1,4 +1,4 @@
-# ** THIS IS A PERSONAL PROJECT, MAINLY TO INTEGRATE WITH WANDERER, IS CLEARLY NOT READY FOR PRIMETIME, AND MAY NEVER BE! I highly encourage folks to continue with https://github.com/secondfry/shortcircuit **
+# THIS IS A PERSONAL PROJECT, MAINLY TO INTEGRATE WITH WANDERER, IS CLEARLY NOT READY FOR PRIMETIME, AND LIKELY WILL NEVER BE! I highly encourage folks to continue with the excellent https://github.com/secondfry/shortcircuit
 
 # Short Circuit
 
@@ -42,6 +42,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -r requirements.txt
 python main.py  # Replace with your actual entry point script if different
+```
 
 ## ⚙️ Quick Start Guide
 Connect your Sources: Click Wormhole Sources at the top right to configure and enable your preferred mappers (Tripwire, Pathfinder, Wanderer) and Eve-Scout.
