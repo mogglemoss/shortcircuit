@@ -1,8 +1,10 @@
+# ** THIS IS A PERSONAL PROJECT, MAINLY TO INTEGRATE WITH WANDERER, IS CLEARLY NOT READY FOR PRIMETIME, AND MAY NEVER BE! I highly encourage folks to continue with https://github.com/secondfry/shortcircuit **
+
 # Short Circuit
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mogglemoss/shortcircuit)](https://github.com/mogglemoss/shortcircuit/releases)
 
-![Short Circuit UI](docs/screenshot.jpg) **Short Circuit** is an advanced, standalone routing and navigation tool for EVE Online. It calculates the absolute shortest path between solar systems by seamlessly blending standard Stargate routes with live wormhole connections pulled from your favorite 3rd-party mapping tools. 
+![Short Circuit UI](docs/screenshot.jpg) **Short Circuit** is an advanced, standalone routing and navigation tool for EVE Online. It calculates the absolute shortest path between solar systems by seamlessly blending standard Stargate routes with live wormhole connections pulled from your favorite 3rd-party mapping tools.
 
 Whether you're running logistics, hunting targets, or just daytripping in J-Space, Short Circuit takes the guesswork out of traversing New Eden.
 
@@ -40,3 +42,24 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -r requirements.txt
 python main.py  # Replace with your actual entry point script if different
+
+## ⚙️ Quick Start Guide
+Connect your Sources: Click Wormhole Sources at the top right to configure and enable your preferred mappers (Tripwire, Pathfinder, Wanderer) and Eve-Scout.
+
+Log in with EvE: (Optional) Authenticate via EVE SSO to enable the "Get player location" and "Set destination" features.
+
+Set your Route: Enter your Source and Destination systems in the Navigation panel.
+
+Configure Restrictions: Adjust ship size limits, security sliders, and avoidance lists based on what you are flying.
+
+Find Path: Hit Find path to generate your route. Jump instructions, signature IDs, and wormhole status will be displayed clearly in the Route Results table.
+
+## 🙌 Credits & Acknowledgments
+A massive shout-out to the original creators and maintainers who laid the groundwork for this tool:
+
+farshield - For designing and building the original version of Short Circuit.
+
+secondfry - For their long-term maintenance of the secondfry/shortcircuit fork, which is keeping the application alive and functional for the EVE community through years of API changes.
+
+## 📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
