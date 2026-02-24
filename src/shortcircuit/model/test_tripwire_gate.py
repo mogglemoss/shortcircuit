@@ -74,7 +74,7 @@ def test_gate_wormhole_is_processed():
     assert connection_type == ConnectionType.WORMHOLE, "Should be added as WORMHOLE type"
     
     # Check the wormhole info array
-    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed] = wh_info
+    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed, source] = wh_info
     
     assert sig_in == 'ABC----', "Signature in should be formatted as ABC----"
     assert code_in == 'GATE', "Wormhole code should be GATE"
@@ -83,6 +83,7 @@ def test_gate_wormhole_is_processed():
     assert wh_life == WormholeTimespan.STABLE, "GATE wormholes should have STABLE timespan (permanent)"
     assert wh_mass == WormholeMassspan.STABLE, "GATE wormholes should have STABLE massspan (permanent)"
     assert wh_size == WormholeSize.UNKNOWN, "GATE wormholes should have UNKNOWN size (permanent connections don't have size restrictions)"
+    assert source == "Tripwire", "Source should be Tripwire"
 
 
 def test_regular_wormhole_respects_life_and_mass():
@@ -137,7 +138,7 @@ def test_regular_wormhole_respects_life_and_mass():
     # Check the wormhole info - should respect the life and mass from the wormhole data
     call_args = solar_map.add_connection.call_args[0]
     wh_info = call_args[3]
-    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed] = wh_info
+    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed, source] = wh_info
     
     assert code_in == 'C140', "Wormhole type should be C140"
     assert code_out == 'K162', "Wormhole code out should be K162"
@@ -165,6 +166,7 @@ def test_gate_wormhole_in_route_calculation():
             WormholeTimespan.STABLE,
             WormholeMassspan.STABLE,
             0.5,  # Updated 0.5 hours ago
+            "Test",
         ],
     )
     
