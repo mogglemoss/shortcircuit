@@ -171,6 +171,7 @@ class Wanderer:
           wh_life,
           wh_mass,
           time_elapsed,
+          self.get_name(),
         ],
       )
       connections_added += 1

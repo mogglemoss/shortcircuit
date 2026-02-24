@@ -436,13 +436,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self._create_ui_elements()
 
     # Table configuration
-    self.tableWidget_path.setColumnCount(6)
+    self.tableWidget_path.setColumnCount(5)
     self.tableWidget_path.setHorizontalHeaderLabels([
       "System",
       "Cls",
       "Sec",
       "Instructions",
-      "Source",
       "Additional information",
     ])
     header: QtWidgets.QHeaderView = self.tableWidget_path.horizontalHeader()
@@ -558,8 +557,8 @@ class MainWindow(QtWidgets.QMainWindow):
     self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
 
     # Tripwire
-    self.pushButton_trip_config = QtWidgets.QPushButton("Map Sources")
-    self.pushButton_trip_get = QtWidgets.QPushButton("Get Chain")
+    self.pushButton_trip_config = QtWidgets.QPushButton("Wormhole Sources")
+    self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Wormholes")
     self.pushButton_trip_get.setEnabled(False)
 
     # Restrictions
@@ -572,8 +571,8 @@ class MainWindow(QtWidgets.QMainWindow):
       "No Wormholes"
     ])
 
-    self.checkBox_eol = QtWidgets.QCheckBox("Ignore EOL")
-    self.checkBox_masscrit = QtWidgets.QCheckBox("Ignore critical mass")
+    self.checkBox_eol = QtWidgets.QCheckBox("Ignore EOL wormholes")
+    self.checkBox_masscrit = QtWidgets.QCheckBox("Ignore critical mass wormholes")
     self.checkBox_ignore_old = QtWidgets.QCheckBox("Ignore wormholes >")
     self.spinBox_hours = QtWidgets.QSpinBox()
     self.spinBox_hours.setRange(0, 48)
@@ -1082,7 +1081,7 @@ class MainWindow(QtWidgets.QMainWindow):
     if win_state:
       self.restoreState(win_state)
     for col_idx, column_width in enumerate(
-      self.settings.value("table_widths", "110,75,75,180,80,200").split(',')
+      self.settings.value("table_widths", "110,75,75,250,200").split(',')
     ):
       if col_idx < self.tableWidget_path.columnCount():
         self.tableWidget_path.setColumnWidth(col_idx, int(column_width))
@@ -1291,36 +1290,27 @@ class MainWindow(QtWidgets.QMainWindow):
 
       route_step['security'] = round(route_step['security'], 1)
       
-      # Extract source
-      source_text = ""
-      path_data = route_step.get('path_data')
-      if path_data and path_data[0] == ConnectionType.WORMHOLE:
-          # path_data[1] is list. Index 8 is source name if present.
-          if len(path_data[1]) > 8:
-              source_text = path_data[1][8]
-      route_step['source'] = source_text
-
       ui_col_id = 0
       for col_id in [
           'name',
           'class',
           'security',
           'path_action',
-          'source',
           'path_info',
       ]:
         text = str(route_step.get(col_id, ''))
         item = QtWidgets.QTableWidgetItem(text)
 
-        if col_id in ['class', 'security', 'source']:
+        if col_id in ['class', 'security']:
           item.setTextAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
           item.setForeground(color)
           font = item.font()
           font.setBold(True)
           item.setFont(font)
 
-        if col_id == 'path_action' and 'wormhole' in text:
-          item.setIcon(self.icon_wormhole)
+        if col_id == 'path_action':
+          if 'wormhole' in text:
+            item.setIcon(self.icon_wormhole)
 
         self.tableWidget_path.setItem(route_step_id, ui_col_id, item)
         ui_col_id += 1
@@ -1458,8 +1448,17 @@ class MainWindow(QtWidgets.QMainWindow):
         "Set the same source and destination :P", MessageType.OK
       )
     else:
-      self.label_status.setText("{} JUMPS".format(route_length - 1))
-      self.label_status.setStyleSheet("QLabel {color: white; font-weight: bold;}")
+      source_color = self.get_system_class_color(route[0]['class']).name()
+      dest_color = self.get_system_class_color(route[-1]['class']).name()
+
+      self.label_status.setText('<span style="font-size: 20pt; color: #e5c07b">{}</span> JUMPS FROM <span style="color:{}">{}</span> TO <span style="color:{}">{}</span>'.format(
+        route_length - 1,
+        source_color,
+        route[0]['name'].upper(),
+        dest_color,
+        route[-1]['name'].upper(),
+      ))
+      self.label_status.setStyleSheet("QLabel {color: white; font-weight: bold; font-size: 12pt;}")
 
     self.add_data_to_table(route)
     self.lineEdit_short_format.setText(short_format)

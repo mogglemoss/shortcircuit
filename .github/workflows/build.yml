@@ -1,0 +1,76 @@
+name: Build Application
+
+on:
+  push:
+    branches: [ "master", "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PySide6 httpx semver python-dateutil pyqtdarktheme appdirs typing-extensions pyinstaller
+
+    - name: Download SDE Database Files
+      shell: bash
+      run: |
+        mkdir -p src/database
+        curl -L -o src/database/mapLocationWormholeClasses.csv https://www.fuzzwork.co.uk/dump/latest/mapLocationWormholeClasses.csv
+        curl -L -o src/database/mapSolarSystemJumps.csv https://www.fuzzwork.co.uk/dump/latest/mapSolarSystemJumps.csv
+        curl -L -o src/database/mapSolarSystems.csv https://www.fuzzwork.co.uk/dump/latest/mapSolarSystems.csv
+        curl -L -o src/database/mapRegions.csv https://www.fuzzwork.co.uk/dump/latest/mapRegions.csv
+        echo "Database files downloaded."
+
+    - name: Build Application
+      run: python build.py
+
+    - name: Create DMG (macOS)
+      if: runner.os == 'macOS'
+      run: python create_dmg.py
+
+    - name: Package (Windows)
+      if: runner.os == 'Windows'
+      run: Compress-Archive -Path "dist\Short Circuit" -DestinationPath "dist\ShortCircuit-Windows.zip"
+
+    - name: Package (Linux)
+      if: runner.os == 'Linux'
+      run: tar -czvf dist/ShortCircuit-Linux.tar.gz -C dist "Short Circuit"
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ShortCircuit-${{ matrix.os }}
+        path: |
+          dist/*.zip
+          dist/*.tar.gz
+          dist/*.dmg
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          dist/*.zip
+          dist/*.tar.gz
+          dist/*.dmg

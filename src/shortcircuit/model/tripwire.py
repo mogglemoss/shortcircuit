@@ -528,7 +528,7 @@ class Tripwire:
         if self._process_wormhole(wormhole, solar_map):
           connections += 1
       except Exception as e:
-        Logger.error('pepega', exc_info=e)
+        Logger.error(f'Error processing wormhole {wormhole.get("id", "unknown")}', exc_info=e)
 
     return connections
 

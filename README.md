@@ -1,29 +1,29 @@
 # Short Circuit
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/mogglemoss/shortcircuit)](https://github.com/mogglemoss/shortcircuit/releases)
+
 ## Description
 Short Circuit (previously known as Pathfinder) is a desktop application which is able to find the shortest path between solar systems (including wormholes) using data retrieved from Eve SDE and 3rd party wormhole mapping tools. The application is able to run on all systems where Python 3.13 and PySide6 are supported.
 
-### Fork Enhancements (v1.1)
-*   **Tripwire Integration**: Added auto-refresh, connection testing, and session cookie persistence.
-*   **User Experience**: Improved tab order, keyboard shortcuts, and clipboard operations.
-*   **Stability**: Enhanced error handling for network requests and thread safety.
-*   **Wanderer Support**: Added integration with Wanderer wormhole mapping tool.
+## Key Improvements & Features
 
-### Fork Enhancements (v1.0)
-This version is a significant modernization of the original tool:
+This repository represents a significant modernization of the original tool, focusing on performance, stability, and user experience.
+
+### Modern Technology Stack
+*   **Python 3.13 & PySide6**: Ported to the latest Python and Qt 6 for better stability, performance, and HiDPI support.
+*   **Async I/O**: Networking layer rewritten using `asyncio` and `httpx` for non-blocking updates and a smoother UI.
+*   **Cross-Platform**: Native support for Windows, Linux, and macOS (including DMG installer).
+
+### Enhanced Integrations
+*   **Tripwire**: Robust integration with auto-refresh, connection testing, and session persistence.
+*   **Wanderer**: Added support for the Wanderer wormhole mapping tool.
+*   **Pathfinder**: Support for Pathfinder instances.
+*   **Eve-Scout**: Integration for Thera connections.
+
+### Improved User Experience
 *   **Modern UI**: Complete interface overhaul with a dark theme ("Daytripper" aesthetic) and improved sidebar layout.
-*   **Performance**: Rewritten networking layer using `asyncio` and `httpx` for non-blocking Tripwire updates.
-*   **Technology**: Ported to **Python 3.13** and **PySide6** (Qt 6) for better stability and HiDPI support.
-*   **macOS Support**: Native macOS app bundle and DMG installer support.
-
-**Features:**
-
-1. Ability to add wormhole connections from [Tripwire](https://tripwire.eve-apps.com/), [Pathfinder](https://github.com/exodus4d/pathfinder), and [Wanderer](https://github.com/Wanderer-Intel/wanderer).
-2. ESI authentication for reading the player location and setting the destination in-game.
-3. Avoidance list.
-4. Wormhole restrictions for: size, life, mass, last updated.
-5. Instructions specify the signature and type of the wormhole (makes navigation easier).
-6. One-line output which can be copy-pasted for those lazy fleet members.
+*   **Usability**: Improved tab order, keyboard shortcuts, and clipboard operations for quick fleet pasting.
+*   **Stability**: Enhanced error handling for network requests and thread safety.
 
 ## Usage
 ```bash
@@ -45,7 +45,7 @@ yaourt -S shortcircuit
 ```
 
 ## Releases
-Binaries (executables) can be downloaded from [here](https://github.com/secondfry/shortcircuit/releases).
+Binaries (executables) can be downloaded from [here](https://github.com/mogglemoss/shortcircuit/releases).
 
 ## SDE update
 In case of SDE update, get new `mapLocationWormholeClasses.csv`,
@@ -155,12 +155,7 @@ discord_integration: false
 
 <https://community.eveonline.com/news/dev-blogs/winners-of-the-eve-online-api-challenge/>
 
-<a href="https://www.youtube.com/watch?v=qw0OhRGeDgA&t=7m0s" target="_blank"><img src="http://img.youtube.com/vi/qw0OhRGeDgA/1.jpg" alt="Pathfinder on the o7 Show" width="480" height="360" border="10" /></a>
-
 ## Future development
 1. Add support for more 3rd party wormhole mapping tools.
 2. Combine data from multiple sources (multiple Tripwire accounts, etc.).
 3. Suggestions?
-
-## Contacts
-For any questions please contact Lenai Chelien. I accept PLEX, ISK, Exotic Dancers and ~~drugs~~ boosters.

@@ -79,8 +79,16 @@ class Navigation:
       return "Jump gate"
 
     if weight[0] == ConnectionType.WORMHOLE:
-      [wh_sig, wh_code, _, _, _, _] = weight[1]
-      return "Jump wormhole\n{} [{}]".format(wh_sig, wh_code)
+      data = weight[1]
+      wh_sig = data[0]
+      wh_code = data[1]
+      instruction = "Jump wormhole\n{} [{}]".format(wh_sig, wh_code)
+      
+      if len(data) > 6:
+        source = data[6]
+        if source:
+          instruction += " [{}]".format(source)
+      return instruction
 
     return "Instructions unclear, initiate self-destruct"
 
