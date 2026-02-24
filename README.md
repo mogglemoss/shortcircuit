@@ -25,25 +25,6 @@ This repository represents a significant modernization of the original tool, foc
 *   **Usability**: Improved tab order, keyboard shortcuts, and clipboard operations for quick fleet pasting.
 *   **Stability**: Enhanced error handling for network requests and thread safety.
 
-## Usage
-```bash
-$ pip install uv
-$ uv sync
-$ source .venv/bin/activate
-$ cd src
-$ python main.py
-```
-
-Some users reported having troubles when installing PySide on Linux/Mac. Try using your built-in package manager. Example for *debian-based* systems:
-```bash
-$ sudo apt-get install python-pyside
-```
-
-For *Arch Linux* users: Short Circuit is available on [AUR](https://aur.archlinux.org/packages/shortcircuit/) (Credits to [Sanxion](https://gate.eveonline.com/Profile/Sanxion)):
-```bash
-yaourt -S shortcircuit
-```
-
 ## Releases
 Binaries (executables) can be downloaded from [here](https://github.com/mogglemoss/shortcircuit/releases).
 
@@ -154,8 +135,3 @@ discord_integration: false
 *Pathfinder* (now renamed to *Short Circuit*) won the EvE Online CREST API Challenge 2016!
 
 <https://community.eveonline.com/news/dev-blogs/winners-of-the-eve-online-api-challenge/>
-
-## Future development
-1. Add support for more 3rd party wormhole mapping tools.
-2. Combine data from multiple sources (multiple Tripwire accounts, etc.).
-3. Suggestions?
