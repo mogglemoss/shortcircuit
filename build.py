@@ -3,6 +3,8 @@ import sys
 import shutil
 import importlib.util
 import subprocess
+import time
+import urllib.request
 
 def check_dependencies():
     """Checks if required dependencies are installed."""
@@ -55,32 +57,48 @@ def build():
     # 0. Check dependencies
     check_dependencies()
 
-    # 1. Verify database exists
+    # 1. Check and download SDE files
+    required_sde = [
+        'mapLocationWormholeClasses.csv',
+        'mapSolarSystemJumps.csv',
+        'mapSolarSystems.csv',
+        'mapRegions.csv'
+    ]
+    
     if not os.path.exists(db_src):
-        print(f"[ERROR] Database directory not found at {db_src}")
-        print("Please ensure 'src/database' exists and contains the CSV files.")
-        sys.exit(1)
+        os.makedirs(db_src)
         
-    # 2. Verify database contains files
-    if not os.listdir(db_src):
-        print(f"[ERROR] Database directory is empty: {db_src}")
-        sys.exit(1)
+    base_url = "https://www.fuzzwork.co.uk/dump/latest/"
+    print(f"Checking SDE files in {db_src}...")
+    
+    for sde in required_sde:
+        path = os.path.join(db_src, sde)
+        if not os.path.exists(path):
+            print(f"  - Downloading {sde}...")
+            try:
+                urllib.request.urlretrieve(f"{base_url}{sde}", path)
+            except Exception as e:
+                print(f"[ERROR] Failed to download {sde}: {e}")
+                sys.exit(1)
 
     # 3. Clean previous builds
     dist_dir = os.path.join(project_root, 'dist')
     build_dir = os.path.join(project_root, 'build')
-    if os.path.exists(dist_dir):
-        print("Cleaning dist directory...")
-        try:
-            shutil.rmtree(dist_dir, ignore_errors=True)
-        except OSError as e:
-            print(f"Warning: Could not fully clean dist directory: {e}")
-    if os.path.exists(build_dir):
-        print("Cleaning build directory...")
-        try:
-            shutil.rmtree(build_dir)
-        except OSError as e:
-            print(f"Warning: Could not fully clean build directory: {e}")
+    
+    for path_to_clean in [dist_dir, build_dir]:
+        if os.path.exists(path_to_clean):
+            print(f"Cleaning {path_to_clean}...")
+            try:
+                shutil.rmtree(path_to_clean)
+            except OSError:
+                print(f"  - Retrying clean of {path_to_clean}...")
+                time.sleep(1)
+                try:
+                    shutil.rmtree(path_to_clean)
+                except OSError as e:
+                    print(f"[ERROR] Could not clean {path_to_clean}: {e}")
+                    print("Please ensure the application is not running and try again.")
+                    sys.exit(1)
 
     # 4. Configure PyInstaller
     # On Windows use ';', on Unix use ':'
@@ -122,6 +140,27 @@ def build():
         '--exclude-module=PySide6.QtQuick',
     ]
     
+    # Add application icon
+    # Expects 'app.icns' for macOS and 'app.ico' for Windows in 'src/resources/'
+    if sys.platform == 'darwin':
+        icon_path = os.path.join(src_path, 'resources', 'app.icns')
+        if os.path.exists(icon_path):
+            print(f"Using icon: {icon_path}")
+            pyi_args.append(f'--icon={icon_path}')
+        else:
+            print("[WARNING] app.icns not found in src/resources/. No icon will be set for macOS.")
+    elif sys.platform == 'win32':
+        icon_path = os.path.join(src_path, 'resources', 'app.ico')
+        if os.path.exists(icon_path):
+            print(f"Using icon: {icon_path}")
+            pyi_args.append(f'--icon={icon_path}')
+        else:
+            print("[WARNING] app.ico not found in src/resources/. No icon will be set for Windows.")
+
+    # Target Universal2 on macOS to support both Intel and Apple Silicon
+    if sys.platform == 'darwin':
+        pyi_args.append('--target-arch=universal2')
+
     for hidden in hidden_imports:
         pyi_args.append(f'--hidden-import={hidden}')
 
@@ -163,9 +202,9 @@ def build():
         if os.path.exists(app_bundle):
             print("\n[INFO] Fixing macOS code signing...")
             try:
-                # 1. Merge/Clean AppleDouble (._) files which confuse codesign
-                print("  - Running dot_clean...")
-                subprocess.run(['dot_clean', '-m', app_bundle], check=True)
+                # 1. Remove ._ files (AppleDouble) explicitly
+                print("  - Removing ._ files...")
+                subprocess.run(['find', app_bundle, '-name', '._*', '-delete'], check=True)
                 
                 # 2. Remove extended attributes (resource forks, Finder info)
                 print("  - Removing extended attributes...")

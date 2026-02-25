@@ -29,9 +29,10 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch='universal2',
     codesign_identity=None,
     entitlements_file=None,
+    icon=['/Users/scott/Documents/Devlopment Projects/Eve Online/daytripper/shortcircuit/src/resources/app.icns'],
 )
 coll = COLLECT(
     exe,
@@ -45,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='ShortCircuit.app',
-    icon=None,
+    icon='/Users/scott/Documents/Devlopment Projects/Eve Online/daytripper/shortcircuit/src/resources/app.icns',
     bundle_identifier=None,
 )

@@ -32,22 +32,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install PySide6 httpx semver python-dateutil pyqtdarktheme appdirs typing-extensions pyinstaller
 
-    - name: Download SDE Database Files
-      shell: bash
-      run: |
-        mkdir -p src/database
-        curl -L -o src/database/mapLocationWormholeClasses.csv https://www.fuzzwork.co.uk/dump/latest/mapLocationWormholeClasses.csv
-        curl -L -o src/database/mapSolarSystemJumps.csv https://www.fuzzwork.co.uk/dump/latest/mapSolarSystemJumps.csv
-        curl -L -o src/database/mapSolarSystems.csv https://www.fuzzwork.co.uk/dump/latest/mapSolarSystems.csv
-        curl -L -o src/database/mapRegions.csv https://www.fuzzwork.co.uk/dump/latest/mapRegions.csv
-        echo "Database files downloaded."
-
     - name: Build Application
       run: python build.py
 
     - name: Create DMG (macOS)
       if: runner.os == 'macOS'
       run: python create_dmg.py
+
+    - name: Rename DMG (macOS)
+      if: runner.os == 'macOS'
+      run: mv "dist/Short Circuit.dmg" "dist/ShortCircuit-macOS-Universal.dmg"
 
     - name: Package (Windows)
       if: runner.os == 'Windows'
