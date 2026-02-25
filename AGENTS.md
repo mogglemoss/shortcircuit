@@ -132,3 +132,13 @@ Low risk - the mutex is only held briefly during token operations.
 - Explain your decision-making process, especially for non-obvious solutions
 - Include test plan details so reviewers can verify the testing was thorough
 - Remember: PR descriptions complement commit messages - use both effectively
+
+## Branch Naming Guidelines
+
+Use the following prefixes for branch names to keep the repository organized:
+
+- **Features**: `feature/short-description` (e.g., `feature/multi-source-config`)
+- **Bug Fixes**: `fix/short-description` (e.g., `fix/login-race-condition`)
+- **Documentation**: `docs/short-description` (e.g., `docs/update-readme`)
+- **Refactoring**: `refactor/short-description` (e.g., `refactor/auth-module`)
+- **Chores**: `chore/short-description` (e.g., `chore/update-deps`)

@@ -501,6 +501,7 @@ class Tripwire:
         time_elapsed,
         self.get_name(),
       ],
+      source_id=self.get_name()
     )
     return True
 

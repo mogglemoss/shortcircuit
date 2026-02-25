@@ -1,5 +1,3 @@
-# solarmap.py
-
 import heapq
 from enum import Enum
 from typing import Dict, List, Tuple
@@ -32,11 +30,10 @@ class SolarSystem:
     self.connected_to: Dict[SolarSystem, Tuple[ConnectionType, List]] = {}
 
   def add_neighbor(self, neighbor: Self, weight: Tuple[ConnectionType, List]):
-    # Ignoring unspecified GATE connections between systems
-    # FIXME this will ignore wormhole connections between gate-neighbors
-    if neighbor in self.connected_to:
-      return
-
+    """
+    Adds or updates a connection to a neighbor.
+    Conflict resolution is now handled entirely by ConnectionDB.
+    """
     self.connected_to[neighbor] = weight
 
   def get_connections(self):
@@ -56,6 +53,9 @@ class SolarMap:
 
   def __init__(self, eve_db: EveDb):
     self.eve_db: EveDb = eve_db
+    from shortcircuit.model.connection_db import ConnectionDB
+    self.connection_db = ConnectionDB()
+    self._graph_dirty = True
     self.systems_list: Dict[int, SolarSystem] = {}
     self.total_systems: int = 0
 
@@ -63,18 +63,64 @@ class SolarMap:
 
   def _init_gates(self):
     for row in self.eve_db.gates:
-      self.add_connection(row[0], row[1], ConnectionType.GATE)
+      self.add_connection(row[0], row[1], ConnectionType.GATE, source_id="eve_db")
+
+  def _build_graph(self):
+    if not self._graph_dirty:
+      return
+
+    self.systems_list = {}
+    self.total_systems = 0
+
+    # Get deduplicated, resolved view
+    for conn in self.connection_db.get_resolved_connections():
+      source = conn.source_system
+      destination = conn.dest_system
+      
+      if source not in self.systems_list:
+        self.add_system(source)
+      if destination not in self.systems_list:
+        self.add_system(destination)
+
+      if conn.con_type == ConnectionType.GATE:
+        self.systems_list[source].add_neighbor(
+          self.systems_list[destination], (ConnectionType.GATE, None)
+        )
+        self.systems_list[destination].add_neighbor(
+          self.systems_list[source], (ConnectionType.GATE, None)
+        )
+      elif conn.con_type == ConnectionType.WORMHOLE:
+        info_fwd = [conn.sig_source, conn.code_source, conn.wh_size, conn.wh_life, conn.wh_mass, conn.time_elapsed]
+        info_bwd = [conn.sig_dest, conn.code_dest, conn.wh_size, conn.wh_life, conn.wh_mass, conn.time_elapsed]
+
+        if conn.source_name:
+          info_fwd.append(conn.source_name)
+          info_bwd.append(conn.source_name)
+
+        self.systems_list[source].add_neighbor(
+          self.systems_list[destination],
+          (ConnectionType.WORMHOLE, info_fwd)
+        )
+        self.systems_list[destination].add_neighbor(
+          self.systems_list[source],
+          (ConnectionType.WORMHOLE, info_bwd)
+        )
+
+    self._graph_dirty = False
 
   def add_system(self, key: int):
-    self.total_systems += 1
-    new_system = SolarSystem(key)
-    self.systems_list[key] = new_system
-    return new_system
+    if key not in self.systems_list:
+      self.total_systems += 1
+      new_system = SolarSystem(key)
+      self.systems_list[key] = new_system
+    return self.systems_list[key]
 
   def get_system(self, key: int):
+    self._build_graph()
     return self.systems_list.get(key, None)
 
   def get_all_systems(self):
+    self._build_graph()
     return self.systems_list.keys()
 
   def add_connection(
@@ -83,55 +129,46 @@ class SolarMap:
     destination: int,
     con_type: ConnectionType,
     con_info: List = None,
+    source_id: str = None,  # Add source_id to track provenance
   ):
-    if source not in self.systems_list:
-      self.add_system(source)
-    if destination not in self.systems_list:
-      self.add_system(destination)
+    from shortcircuit.model.connection_db import ConnectionData
+    if not source_id:
+      source_id = "legacy"
 
     if con_type == ConnectionType.GATE:
-      self.systems_list[source].add_neighbor(
-        self.systems_list[destination], (ConnectionType.GATE, None)
+      conn = ConnectionData(
+        source_id=source_id,
+        source_system=source,
+        dest_system=destination,
+        con_type=ConnectionType.GATE
       )
-      self.systems_list[destination].add_neighbor(
-        self.systems_list[source], (ConnectionType.GATE, None)
-      )
-      return
-
-    if con_type == ConnectionType.WORMHOLE:
-      sig_source = con_info[0]
-      code_source = con_info[1]
-      sig_dest = con_info[2]
-      code_dest = con_info[3]
-      wh_size = con_info[4]
-      wh_life = con_info[5]
-      wh_mass = con_info[6]
-      time_elapsed = con_info[7]
+    else:
       source_name = con_info[8] if len(con_info) > 8 else None
-
-      info_fwd = [sig_source, code_source, wh_size, wh_life, wh_mass, time_elapsed]
-      info_bwd = [sig_dest, code_dest, wh_size, wh_life, wh_mass, time_elapsed]
-
-      if source_name:
-        info_fwd.append(source_name)
-        info_bwd.append(source_name)
-
-      self.systems_list[source].add_neighbor(
-        self.systems_list[destination],
-        (ConnectionType.WORMHOLE, info_fwd)
+      conn = ConnectionData(
+        source_id=source_id,
+        source_system=source,
+        dest_system=destination,
+        con_type=ConnectionType.WORMHOLE,
+        sig_source=con_info[0],
+        code_source=con_info[1],
+        sig_dest=con_info[2],
+        code_dest=con_info[3],
+        wh_size=con_info[4],
+        wh_life=con_info[5],
+        wh_mass=con_info[6],
+        time_elapsed=con_info[7],
+        source_name=source_name
       )
-      self.systems_list[destination].add_neighbor(
-        self.systems_list[source],
-        (ConnectionType.WORMHOLE, info_bwd)
-      )
-      return
-
-    Logger.error("Unknown connection type provided")
+      
+    self.connection_db.add_connection(conn)
+    self._graph_dirty = True
 
   def __contains__(self, system_id: int):
+    self._build_graph()
     return system_id in self.systems_list
 
   def __iter__(self):
+    self._build_graph()
     return iter(self.systems_list.values())
 
   def _check_neighbor(
@@ -175,6 +212,7 @@ class SolarMap:
     destination: int,
     restrictions: Restrictions,
   ):
+    self._build_graph()
     # We don't have those systems in our SolarMap which means it is wormhole we have no connections to.
     if source not in self.systems_list or destination not in self.systems_list:
       return []
@@ -206,7 +244,7 @@ class SolarMap:
     path = []
 
     priority_queue: List[Tuple[int, int, SolarSystem]] = []
-    visited = {self.get_system(x) for x in avoidance_list}
+    visited = {self.get_system(x) for x in avoidance_list if self.get_system(x)}
     distance: Dict[SolarSystem, int] = {}
     parent = {}
 

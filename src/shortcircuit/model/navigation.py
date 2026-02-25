@@ -3,12 +3,7 @@
 from typing import TYPE_CHECKING, List
 
 from .evedb import EveDb, SystemDescription, WormholeMassspan, WormholeSize, WormholeTimespan
-from .evescout import EveScout
-from .mapper_registry import MapperRegistry
-from .pathfinder import Pathfinder
 from .solarmap import ConnectionType, SolarMap
-from .tripwire import Tripwire
-from .wanderer import Wanderer
 
 if TYPE_CHECKING:
   from shortcircuit.app import MainWindow
@@ -24,7 +19,6 @@ class Navigation:
     self.eve_db = eve_db
 
     self.solar_map = SolarMap(self.eve_db)
-    self.mapper_registry = MapperRegistry()
     
     # Keep a reference to the Tripwire instance for cookie management
     self.tripwire_instance = None
@@ -35,39 +29,22 @@ class Navigation:
 
   def setup_mappers(self):
     """Configures the mapper registry based on current app settings."""
-    self.mapper_registry.clear()
+    # This is handled by SourceManager now, so we just clear our old reference
     self.tripwire_instance = None
-
-    # Add Tripwire if configured
-    if self.app_obj.tripwire_url and self.app_obj.tripwire_user and self.app_obj.tripwire_pass:
-      self.tripwire_instance = Tripwire(
-        self.app_obj.tripwire_user,
-        self.app_obj.tripwire_pass,
-        self.app_obj.tripwire_url,
-      )
-      self.mapper_registry.register(self.tripwire_instance)
-
-    # Add Eve-Scout if enabled
-    if self.app_obj.state_evescout["enabled"]:
-      self.mapper_registry.register(EveScout())
-
-    # Add Pathfinder if enabled
-    if self.app_obj.pathfinder_enabled:
-      self.mapper_registry.register(Pathfinder(
-        self.app_obj.pathfinder_url,
-        self.app_obj.pathfinder_token
-      ))
-
-    # Add Wanderer if enabled
-    if self.app_obj.wanderer_enabled:
-      self.mapper_registry.register(Wanderer(
-        self.app_obj.wanderer_url,
-        self.app_obj.wanderer_map_id,
-        self.app_obj.wanderer_token
-      ))
+    
+    # Try to find a tripwire instance for cookie management if needed
+    from shortcircuit.model.source_manager import SourceManager
+    from shortcircuit.model.mapsource import SourceType
+    sm = SourceManager()
+    for source in sm.get_enabled_sources():
+      if source.type == SourceType.TRIPWIRE:
+        self.tripwire_instance = source._tripwire
+        break
 
   def augment_map(self, solar_map: SolarMap):
-    return self.mapper_registry.augment_map(solar_map)
+    from shortcircuit.model.source_manager import SourceManager
+    sm = SourceManager()
+    return sm.fetch_all(solar_map)
 
   # FIXME refactor neighbor info - weights
   @staticmethod

@@ -22,6 +22,12 @@ from .model.logger import Logger
 from .model.navigation import Navigation
 from .model.navprocessor import NavProcessor
 from .model.versioncheck import VersionCheck
+from .model.source_manager import SourceManager
+from .model.mapsource import SourceType
+from .model.tripwire_source import TripwireSource
+from .model.wanderer_source import WandererSource
+from .model.pathfinder_source import PathfinderSource
+from .model.evescout_source import EveScoutSource
 
 
 class StateEVEConnection(TypedDict):
@@ -396,6 +402,13 @@ class MainWindow(QtWidgets.QMainWindow):
       QtCore.QSettings.UserScope,
       __appname__,
     )
+
+    self.source_manager = SourceManager()
+    self.source_manager.register_source_class(SourceType.TRIPWIRE, TripwireSource)
+    self.source_manager.register_source_class(SourceType.WANDERER, WandererSource)
+    self.source_manager.register_source_class(SourceType.PATHFINDER, PathfinderSource)
+    self.source_manager.register_source_class(SourceType.EVESCOUT, EveScoutSource)
+    self.source_manager.load_configuration()
 
     self.tripwire_url = None
     self.tripwire_user = None

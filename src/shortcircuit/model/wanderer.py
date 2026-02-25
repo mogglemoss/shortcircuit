@@ -11,10 +11,11 @@ from .solarmap import ConnectionType, SolarMap
 
 
 class Wanderer:
-  def __init__(self, url: str, map_id: str, token: str):
+  def __init__(self, url: str, map_id: str, token: str, name: str = "Wanderer"):
     self.url = url.rstrip('/') if url else ""
     self.map_id = map_id
     self.token = token
+    self.name = name
     self.headers = {
       "Authorization": f"Bearer {self.token}",
       "Accept": "application/json"
@@ -22,7 +23,7 @@ class Wanderer:
     self.eve_db = EveDb()
 
   def get_name(self) -> str:
-    return "Wanderer"
+    return self.name
 
   def test_credentials(self) -> Tuple[bool, str]:
     return asyncio.run(self._test_credentials_async())
