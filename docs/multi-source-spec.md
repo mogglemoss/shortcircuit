@@ -76,3 +76,28 @@ Transition from flat `QSettings` keys (e.g., `Tripwire/url`) to a JSON-serialize
 1.  **Startup Check**: `SourceManager` checks for legacy `QSettings` keys (e.g., `Tripwire/url`).
 2.  **Convert**: If found, create a new `MapSource` entry in the new list format using the old values.
 3.  **Cleanup**: Remove legacy keys to prevent re-migration.
+
+## Future Opportunities (Phase 2)
+
+### 1. Modularization of `app.py`
+*   **Problem:** `app.py` currently acts as a "God Object", handling UI layout, business logic, and thread management.
+*   **Solution:** Extract UI layout into `view/main_window_ui.py` and move logic into a Controller layer.
+
+### 2. Strengthening Type Safety
+*   **Problem:** Reliance on positional lists for complex data is brittle.
+*   **Solution:** Standardize on the `ConnectionData` dataclass and implement strict `TypedDict` for pathfinding restrictions.
+
+### 3. Network Resilience and Observability
+*   **Problem:** Transient network failures mark sources as "Error" without retry.
+*   **Solution:** Implement exponential backoff retries and add a "Source Log" console in the UI.
+
+### 4. Graph Update Efficiency
+*   **Problem:** Full graph rebuild on every source update.
+*   **Solution:** Implement incremental graph updates to only modify affected edges.
+
+### 5. Asynchronous UI Patterns
+*   **Problem:** Large data merges can cause UI stutters.
+*   **Solution:** Explore `qasync` for native `asyncio` integration with the Qt event loop.
+
+### 6. Style and Naming Consistency
+*   **Solution:** Systematic refactor to `snake_case` for all methods and variables to comply with PEP 8.

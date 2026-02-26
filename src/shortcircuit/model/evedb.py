@@ -113,9 +113,9 @@ class WormholeMassspan(int, Enum):
 
 
 class SpaceType(int, Enum):
-  HS = 1,
-  LS = 2,
-  NS = 3,
+  HS = 1
+  LS = 2
+  NS = 3
   WH = 4
 
 
@@ -470,7 +470,7 @@ class EveDb(metaclass=Singleton):
 
   def __init__(self):
     filename_statics = 'statics.csv'
-    filaname_renames = 'renames.csv'
+    filename_renames = 'renames.csv'
 
     # NOTE(secondfry): thank you, Steve Ronuken.
     # @see https://www.fuzzwork.co.uk/dump/
@@ -480,7 +480,7 @@ class EveDb(metaclass=Singleton):
 
     self._init_gates(get_csv_data(filename_gates))
     self._init_system_descriptions(get_csv_data(filename_descriptions))
-    self._init_renames(get_csv_data(filaname_renames))
+    self._init_renames(get_csv_data(filename_renames))
     self._init_regions(get_csv_data(filename_regions))
 
     self.wh_codes: Dict[str, WormholeSize] = {
