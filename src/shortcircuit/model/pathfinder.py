@@ -18,9 +18,12 @@ class Pathfinder:
 
   def __init__(self, url: str, token: str, name: str = "Pathfinder"):
     self.eve_db = EveDb()
-    self.url = url.strip().rstrip('/')
+    self.url = url.strip().rstrip('/') if url else ""
+    if self.url and not (self.url.startswith('http://') or self.url.startswith('https://')):
+      self.url = 'https://' + self.url
     self.token = token
     self.name = name
+    self.source_id = name
 
   def get_name(self) -> str:
     return self.name
@@ -148,7 +151,7 @@ class Pathfinder:
       from shortcircuit.model.connection_db import ConnectionData
       solar_map.add_connection(
         ConnectionData(
-          source_id=self.get_name(),
+          source_id=self.source_id,
           source_system=source_id,
           dest_system=dest_id,
           con_type=ConnectionType.WORMHOLE,
@@ -160,7 +163,7 @@ class Pathfinder:
           wh_life=wh_life,
           wh_mass=wh_mass,
           time_elapsed=time_elapsed,
-          source_name=self.get_name()
+          source_name=self.name
         )
       )
       return True

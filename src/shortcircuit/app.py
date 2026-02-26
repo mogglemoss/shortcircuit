@@ -1426,9 +1426,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     latest = json.loads(latest)
     version = latest['tag_name'].split('v')[-1]
-    changelog = latest['body']
-    if len(latest['body']) > 1200:
-      changelog = latest['body'][0:1200].split(' ')
+    changelog = latest.get('body') or "No changelog provided."
+    if len(changelog) > 1200:
+      changelog = changelog[0:1200].split(' ')
       del changelog[-1]
       changelog = ' '.join(changelog)
 

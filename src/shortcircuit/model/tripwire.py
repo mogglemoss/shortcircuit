@@ -132,8 +132,11 @@ class Tripwire:
     self.eve_db = EveDb()
     self.username = username
     self.password = password
-    self.url = url.strip().rstrip('/')
+    self.url = url.strip().rstrip('/') if url else ""
+    if self.url and not (self.url.startswith('http://') or self.url.startswith('https://')):
+      self.url = 'https://' + self.url
     self.name = name
+    self.source_id = name
     self.chain: TripwireChain = self._empty_chain()
     self.cookies: Optional[httpx.Cookies] = None
 
@@ -489,7 +492,7 @@ class Tripwire:
     # Add wormhole connection to solar system
     solar_map.add_connection(
       ConnectionData(
-        source_id=self.get_name(),
+        source_id=self.source_id,
         source_system=system_from,
         dest_system=system_to,
         con_type=ConnectionType.WORMHOLE,
@@ -501,7 +504,7 @@ class Tripwire:
         wh_life=wh_life,
         wh_mass=wh_mass,
         time_elapsed=time_elapsed,
-        source_name=self.get_name()
+        source_name=self.name
       )
     )
     return True

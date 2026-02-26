@@ -71,10 +71,6 @@ class TripwireConfigWidget(BaseSourceConfigWidget):
         self.source.url = self.url_edit.text()
         self.source.username = self.user_edit.text()
         self.source.password = self.pass_edit.text()
-        # Update underlying Tripwire instance
-        self.source._tripwire.url = self.source.url
-        self.source._tripwire.username = self.source.username
-        self.source._tripwire.password = self.source.password
         self.changed.emit()
 
 
@@ -97,10 +93,6 @@ class WandererConfigWidget(BaseSourceConfigWidget):
         self.source.url = self.url_edit.text()
         self.source.map_id = self.map_edit.text()
         self.source.token = self.token_edit.text()
-        # Update underlying Wanderer instance
-        self.source._wanderer.url = self.source.url
-        self.source._wanderer.map_id = self.source.map_id
-        self.source._wanderer.token = self.source.token
         self.changed.emit()
 
 
@@ -119,9 +111,6 @@ class PathfinderConfigWidget(BaseSourceConfigWidget):
     def update_config(self):
         self.source.url = self.url_edit.text()
         self.source.token = self.token_edit.text()
-        # Update underlying Pathfinder instance
-        self.source._pathfinder.url = self.source.url
-        self.source._pathfinder.token = self.source.token
         self.changed.emit()
 
 

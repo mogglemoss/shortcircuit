@@ -10,7 +10,41 @@ class WandererSource(MapSource):
         self.map_id = map_id
         self.token = token
         self._wanderer = Wanderer(url, map_id, token)
-        self._wanderer.name = name
+        self._wanderer.source_id = self.id
+
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, value):
+        self._url = value.strip().rstrip('/') if value else ""
+        if self._url and not (self._url.startswith('http://') or self._url.startswith('https://')):
+            self._url = 'https://' + self._url
+        if hasattr(self, '_wanderer'):
+            self._wanderer.url = self._url
+
+    @property
+    def map_id(self):
+        return self._map_id
+
+    @map_id.setter
+    def map_id(self, value):
+        self._map_id = value
+        if hasattr(self, '_wanderer'):
+            self._wanderer.map_id = value
+
+    @property
+    def token(self):
+        return self._token
+
+    @token.setter
+    def token(self, value):
+        self._token = value
+        if hasattr(self, '_wanderer'):
+            self._wanderer.token = value
+            # Update headers in Wanderer instance
+            self._wanderer.headers["Authorization"] = f"Bearer {value}"
 
     @property
     def type(self) -> SourceType:
@@ -21,19 +55,7 @@ class WandererSource(MapSource):
         if not self.enabled:
             return 0
             
-        # Temporarily tell the wanderer instance its name so connections are tagged correctly
-        self._wanderer.name = self.id
-        
-        return self._fetch_data(solar_map)
-
-    def _fetch_data(self, solar_map: SolarMap) -> int:
-
-        connections_added = self._wanderer.augment_map(solar_map)
-        
-        # Restore actual name
-        self._wanderer.name = self.name
-        
-        return connections_added
+        return self._wanderer.augment_map(solar_map)
 
     def fetch_test_data(self) -> int:
         """Fetch data for testing purposes, without modifying the SolarMap."""

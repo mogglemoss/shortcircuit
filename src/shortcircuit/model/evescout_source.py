@@ -8,6 +8,19 @@ class EveScoutSource(MapSource):
         super().__init__(id, name, enabled)
         self.url = url
         self._evescout = EveScout(url=self.url, name=name)
+        self._evescout.source_id = self.id
+
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, value):
+        self._url = value.strip().rstrip('/') if value else ""
+        if self._url and not (self._url.startswith('http://') or self._url.startswith('https://')):
+            self._url = 'https://' + self._url
+        if hasattr(self, '_evescout'):
+            self._evescout.evescout_url = self._url
 
     @property
     def type(self) -> SourceType:
@@ -18,15 +31,7 @@ class EveScoutSource(MapSource):
         if not self.enabled:
             return 0
             
-        # Temporarily tell the evescout instance its name so connections are tagged correctly
-        self._evescout.name = self.id
-        
-        connections_added = self._evescout.augment_map(solar_map)
-        
-        # Restore actual name
-        self._evescout.name = self.name
-        
-        return connections_added
+        return self._evescout.augment_map(solar_map)
 
     def connect(self) -> Tuple[bool, str]:
         """EveScout doesn't require authentication, just return True if URL is set."""

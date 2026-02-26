@@ -10,6 +10,39 @@ class TripwireSource(MapSource):
         self.username = username
         self.password = password
         self._tripwire = Tripwire(username, password, url, name)
+        self._tripwire.source_id = self.id
+
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, value):
+        self._url = value.strip().rstrip('/') if value else ""
+        if self._url and not (self._url.startswith('http://') or self._url.startswith('https://')):
+            self._url = 'https://' + self._url
+        if hasattr(self, '_tripwire'):
+            self._tripwire.url = self._url
+
+    @property
+    def username(self):
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = value
+        if hasattr(self, '_tripwire'):
+            self._tripwire.username = value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+        if hasattr(self, '_tripwire'):
+            self._tripwire.password = value
 
     @property
     def type(self) -> SourceType:
@@ -20,15 +53,7 @@ class TripwireSource(MapSource):
         if not self.enabled:
             return 0
             
-        # Temporarily tell the tripwire instance its name so connections are tagged correctly
-        self._tripwire.name = self.id
-        
-        connections_added = self._tripwire.augment_map(solar_map)
-        
-        # Restore actual name
-        self._tripwire.name = self.name
-        
-        return connections_added
+        return self._tripwire.augment_map(solar_map)
 
     def connect(self) -> Tuple[bool, str]:
         """Test connection or authenticate."""

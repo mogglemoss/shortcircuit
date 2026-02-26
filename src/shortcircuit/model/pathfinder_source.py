@@ -9,6 +9,29 @@ class PathfinderSource(MapSource):
         self.url = url
         self.token = token
         self._pathfinder = Pathfinder(url=self.url, token=self.token, name=name)
+        self._pathfinder.source_id = self.id
+
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, value):
+        self._url = value.strip().rstrip('/') if value else ""
+        if self._url and not (self._url.startswith('http://') or self._url.startswith('https://')):
+            self._url = 'https://' + self._url
+        if hasattr(self, '_pathfinder'):
+            self._pathfinder.url = self._url
+
+    @property
+    def token(self):
+        return self._token
+
+    @token.setter
+    def token(self, value):
+        self._token = value
+        if hasattr(self, '_pathfinder'):
+            self._pathfinder.token = value
 
     @property
     def type(self) -> SourceType:
@@ -19,15 +42,7 @@ class PathfinderSource(MapSource):
         if not self.enabled:
             return 0
             
-        # Temporarily tell the pathfinder instance its name so connections are tagged correctly
-        self._pathfinder.name = self.id
-        
-        connections_added = self._pathfinder.augment_map(solar_map)
-        
-        # Restore actual name
-        self._pathfinder.name = self.name
-        
-        return connections_added
+        return self._pathfinder.augment_map(solar_map)
 
     def connect(self) -> Tuple[bool, str]:
         """Test connection or authenticate."""

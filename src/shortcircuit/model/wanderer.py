@@ -15,10 +15,13 @@ if TYPE_CHECKING:
 
 class Wanderer:
   def __init__(self, url: str, map_id: str, token: str, name: str = "Wanderer"):
-    self.url = url.rstrip('/') if url else ""
+    self.url = url.strip().rstrip('/') if url else ""
+    if self.url and not (self.url.startswith('http://') or self.url.startswith('https://')):
+      self.url = 'https://' + self.url
     self.map_id = map_id
     self.token = token
     self.name = name
+    self.source_id = name
     self.headers = {
       "Authorization": f"Bearer {self.token}",
       "Accept": "application/json"
@@ -161,7 +164,7 @@ class Wanderer:
       from shortcircuit.model.connection_db import ConnectionData
       solar_map.add_connection(
         ConnectionData(
-          source_id=self.get_name(),
+          source_id=self.source_id,
           source_system=system_id,
           dest_system=linked_system_id,
           con_type=ConnectionType.WORMHOLE,
@@ -173,7 +176,7 @@ class Wanderer:
           wh_life=wh_life,
           wh_mass=wh_mass,
           time_elapsed=time_elapsed,
-          source_name=self.get_name()
+          source_name=self.name
         )
       )
       connections_added += 1

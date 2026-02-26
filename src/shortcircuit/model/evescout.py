@@ -25,6 +25,7 @@ class EveScout:
     self.eve_db = EveDb()
     self.evescout_url = url
     self.name = name
+    self.source_id = name
 
   def get_name(self) -> str:
     return self.name
@@ -96,7 +97,7 @@ class EveScout:
           from shortcircuit.model.connection_db import ConnectionData
           solar_map.add_connection(
             ConnectionData(
-              source_id=self.get_name(),
+              source_id=self.source_id,
               source_system=source,
               dest_system=dest,
               con_type=ConnectionType.WORMHOLE,
@@ -108,7 +109,7 @@ class EveScout:
               wh_life=wh_life,
               wh_mass=wh_mass,
               time_elapsed=time_elapsed,
-              source_name=self.get_name()
+              source_name=self.name
             )
           )
 
