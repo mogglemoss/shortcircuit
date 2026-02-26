@@ -1,7 +1,6 @@
 [project]
 name = "shortcircuit"
-version = "0.1.0"
-description = "EVE Online routing app"
+version = " = "EVE Online routing app"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [

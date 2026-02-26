@@ -19,10 +19,10 @@ def main():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pytest"])
 
     # Arguments to pass to pytest
-    # Default to running the pathfinder tests if no args provided
+    # Default to running all model tests if no args provided
     args = sys.argv[1:]
     if not args:
-        args = [os.path.join(src_path, 'shortcircuit', 'model', 'test_pathfinder.py')]
+        args = [os.path.join(src_path, 'shortcircuit', 'model')]
     
     cmd = [sys.executable, '-m', 'pytest', '-v'] + args
     

@@ -65,6 +65,8 @@ class SolarMap:
 
   def _init_gates(self):
     from shortcircuit.model.connection_db import ConnectionData
+    if not self.eve_db:
+      return
     for row in self.eve_db.gates:
       self.add_connection(
         ConnectionData(

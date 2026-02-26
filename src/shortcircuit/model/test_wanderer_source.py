@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,11 +21,13 @@ def test_wanderer_source_fetch_data():
   wanderer_source._wanderer = mock_wanderer
 
   # Call fetch_data
-  connections_added = wanderer_source.fetch_test_data()
+  with patch('shortcircuit.model.wanderer_source.SolarMap') as mock_map_cls:
+    mock_map = mock_map_cls.return_value
+    connections_added = wanderer_source.fetch_test_data()
 
-  # Assertions
-  assert connections_added == 5
-  mock_wanderer.augment_map.assert_called_once()
+    # Assertions
+    assert connections_added == 5
+    mock_wanderer.augment_map.assert_called_once_with(mock_map)
 
 
 # Example Usage (replace with your actual test):

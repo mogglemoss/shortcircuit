@@ -1,7 +1,7 @@
 # evescout.py
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from shortcircuit import USER_AGENT
@@ -78,8 +78,8 @@ class EveScout:
         # Compute time elapsed from this moment to when the signature was updated
         last_modified = datetime.strptime(
           connection['updated_at'], "%Y-%m-%dT%H:%M:%S.000Z"
-        )
-        delta = datetime.utcnow() - last_modified
+        ).replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - last_modified
         time_elapsed = round(delta.total_seconds() / 3600.0, 1)
 
         if source != 0 and dest != 0:

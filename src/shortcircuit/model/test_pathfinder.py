@@ -55,19 +55,18 @@ class TestPathfinder:
         assert count == 1
         self.solar_map.add_connection.assert_called_once()
         
-        args = self.solar_map.add_connection.call_args[0]
-        assert args[0] == 30000142
-        assert args[1] == 31000005
-        assert args[2] == ConnectionType.WORMHOLE
+        conn = self.solar_map.add_connection.call_args[0][0]
+        assert conn.source_system == 30000142
+        assert conn.dest_system == 31000005
+        assert conn.con_type == ConnectionType.WORMHOLE
         
-        info = args[3]
-        assert info[0] == "ABC"
-        assert info[1] == "K162"
-        assert info[2] == "DEF"
-        assert info[3] == "K162"
-        assert info[4] == WormholeSize.LARGE
-        assert info[5] == WormholeTimespan.STABLE
-        assert info[6] == WormholeMassspan.STABLE
+        assert conn.sig_source == "ABC"
+        assert conn.code_source == "K162"
+        assert conn.sig_dest == "DEF"
+        assert conn.code_dest == "K162"
+        assert conn.wh_size == WormholeSize.LARGE
+        assert conn.wh_life == WormholeTimespan.STABLE
+        assert conn.wh_mass == WormholeMassspan.STABLE
 
     @patch('httpx.AsyncClient')
     def test_augment_map_parses_list_response(self, mock_client_cls):
@@ -94,12 +93,11 @@ class TestPathfinder:
         count = self.pathfinder.augment_map(self.solar_map)
 
         assert count == 1
-        args = self.solar_map.add_connection.call_args[0]
-        info = args[3]
-        assert info[1] == "H121"
-        assert info[4] == WormholeSize.SMALL
-        assert info[5] == WormholeTimespan.CRITICAL
-        assert info[6] == WormholeMassspan.DESTAB
+        conn = self.solar_map.add_connection.call_args[0][0]
+        assert conn.code_source == "H121"
+        assert conn.wh_size == WormholeSize.SMALL
+        assert conn.wh_life == WormholeTimespan.CRITICAL
+        assert conn.wh_mass == WormholeMassspan.DESTAB
 
     @patch('httpx.AsyncClient')
     def test_augment_map_handles_errors(self, mock_client_cls):

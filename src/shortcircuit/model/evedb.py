@@ -6,7 +6,6 @@ import sys
 import os
 from os import path
 from typing import Dict, List, Optional, TypedDict, Union
-from typing_extensions import deprecated
 
 from .logger import Logger
 from .utility.singleton import Singleton
@@ -552,7 +551,6 @@ class EveDb(metaclass=Singleton):
       sys_class = db_class
     return sys_class
 
-  @deprecated('FIXME(secondfry): this seems to be broken')
   def system_type(self, system_id: int) -> SpaceType:
     db_class = self.system_desc[system_id]['class']
 
