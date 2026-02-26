@@ -5,12 +5,13 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mogglemoss/shortcircuit)](https://github.com/mogglemoss/shortcircuit/releases)
 [![Build Application](https://github.com/mogglemoss/shortcircuit/actions/workflows/build.yml/badge.svg)](https://github.com/mogglemoss/shortcircuit/actions/workflows/build.yml)
 
-![Short Circuit UI](docs/screenshot.jpg) **Short Circuit** is an advanced, standalone routing and navigation tool for EVE Online. It calculates the absolute shortest path between solar systems by seamlessly blending standard Stargate routes with live wormhole connections pulled from your favorite 3rd-party mapping tools.
+![Short Circuit UI](docs/Daytripper.png) **Short Circuit** is an advanced, standalone routing and navigation tool for EVE Online. It calculates the absolute shortest path between solar systems by seamlessly blending standard Stargate routes with live wormhole connections pulled from your favorite 3rd-party mapping tools.
 
 Whether you're running logistics, hunting targets, or just daytripping in J-Space, Short Circuit takes the guesswork out of traversing New Eden.
 
 ## ✨ Features
 
+![Short Circuit UI](docs/Daytripperconfig.png)
 * **Intelligent Hybrid Routing**: Calculate optimized paths across High Sec, Low Sec, Null Sec, and Wormhole space in seconds.
 * **EVE SSO Integration**: Log in securely with your EVE Online account to automatically fetch your current in-game location and set route waypoints directly in the game client.
 * **Granular Route Filtering**:
@@ -26,7 +27,7 @@ Whether you're running logistics, hunting targets, or just daytripping in J-Spac
 * **Multi-Source Aggregation**: Simultaneously connect to multiple mapping tools. Aggregate data from your corp's Tripwire, and your personal Wanderer map all at once.
 * **Multi-Account Support**: Add as many sources as you need, even from the same provider. You can now connect to multiple different Tripwire servers or Wanderer maps simultaneously.
 * **Intelligent Deduplication**: The new **Connection Database** automatically resolves conflicts between sources, prioritizing permanent gates over transient wormholes and favoring the freshest data based on update timestamps.
-* **Supported Platforms**: Full support for **Tripwire**, **Pathfinder**, **Wanderer**, and **Eve-Scout** with per-source toggles and targeted refresh.
+* **Supported Platforms**: Full support for **Tripwire**, **Wanderer**, and **Eve-Scout** with per-source toggles and targeted refresh.
 
 Short Circuit pulls live chain data directly from the most popular wormhole mapping tools in the EVE community:
 
