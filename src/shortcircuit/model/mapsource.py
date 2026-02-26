@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import uuid
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from shortcircuit.model.solarmap import SolarMap
 
 class SourceType(str, Enum):
@@ -15,6 +15,7 @@ class MapSource(ABC):
         self.id = id if id else str(uuid.uuid4())
         self.name = name
         self.enabled = enabled
+        self.last_updated = None
 
     @property
     @abstractmethod
@@ -27,8 +28,8 @@ class MapSource(ABC):
         pass
 
     @abstractmethod
-    def connect(self) -> bool:
-        """Test connection or authenticate."""
+    def connect(self) -> Tuple[bool, str]:
+        """Test connection or authenticate. Returns (success, message)."""
         pass
 
     @abstractmethod

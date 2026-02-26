@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from shortcircuit.model.mapsource import MapSource, SourceType
 from shortcircuit.model.evescout import EveScout
 from shortcircuit.model.solarmap import SolarMap
@@ -28,13 +28,16 @@ class EveScoutSource(MapSource):
         
         return connections_added
 
-    def connect(self) -> bool:
+    def connect(self) -> Tuple[bool, str]:
         """EveScout doesn't require authentication, just return True if URL is set."""
-        return bool(self.url)
+        if self.url:
+            return True, "URL is set."
+        return False, "URL is missing."
 
     def get_status(self) -> str:
         """Get current connection status."""
-        return "Connected" if self.connect() else "Disconnected"
+        success, _ = self.connect()
+        return "Connected" if success else "Disconnected"
 
     def to_json(self) -> Dict[str, Any]:
         """Serialize source config to dict."""

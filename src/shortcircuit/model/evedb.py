@@ -12,7 +12,7 @@ from .logger import Logger
 from .utility.singleton import Singleton
 
 
-def get_csv_reader(filename: str):
+def get_csv_data(filename: str):
   if getattr(sys, 'frozen', False):
     # If the application is run as a bundle, the PyInstaller bootloader
     # extends the sys module by a flag frozen=True and sets the app
@@ -77,13 +77,11 @@ def get_csv_reader(filename: str):
           Logger.info(f"Resolved case-insensitive path: {normpath}")
           break
 
-  f = open(normpath, 'r', encoding='utf-8')
-  reader = csv.reader(f, delimiter=',')
-
-  # NOTE(secondfry): skip headings.
-  next(reader)
-
-  return reader
+  with open(normpath, 'r', encoding='utf-8') as f:
+    reader = csv.reader(f, delimiter=',')
+    # NOTE(secondfry): skip headings.
+    next(reader)
+    return list(reader)
 
 
 class WormholeSize(int, Enum):
@@ -148,7 +146,7 @@ class SolarSystem:
 
   MAP_LOCATION_WORMHOLE_CLASSES = {
     int(row[0]): int(row[1])
-    for row in get_csv_reader('mapLocationWormholeClasses.csv')
+    for row in get_csv_data('mapLocationWormholeClasses.csv')
   }
 
   def __init__(
@@ -481,17 +479,17 @@ class EveDb(metaclass=Singleton):
     filename_descriptions = 'mapSolarSystems.csv'
     filename_regions = 'mapRegions.csv'
 
-    self._init_gates(get_csv_reader(filename_gates))
-    self._init_system_descriptions(get_csv_reader(filename_descriptions))
-    self._init_renames(get_csv_reader(filaname_renames))
-    self._init_regions(get_csv_reader(filename_regions))
+    self._init_gates(get_csv_data(filename_gates))
+    self._init_system_descriptions(get_csv_data(filename_descriptions))
+    self._init_renames(get_csv_data(filaname_renames))
+    self._init_regions(get_csv_data(filename_regions))
 
     self.wh_codes: Dict[str, WormholeSize] = {
       rows[0]: WormholeSize(int(rows[1]))
-      for rows in get_csv_reader(filename_statics)
+      for rows in get_csv_data(filename_statics)
     }
 
-  def _init_gates(self, reader):
+  def _init_gates(self, data):
     """
     Data is stored in 6 column format.
     0: fromRegionID,
@@ -501,12 +499,12 @@ class EveDb(metaclass=Singleton):
     4: toConstellationID,
     5: toRegionID.
     """
-    self.gates = [[int(row[2]), int(row[3])] for row in reader]
+    self.gates = [[int(row[2]), int(row[3])] for row in data]
 
-  def _init_system_descriptions(self, reader):
+  def _init_system_descriptions(self, data):
     self.system_desc: Dict[int, SystemDescription] = {}
     self.region_systems: Dict[int, List[SystemDescription]] = {}
-    for row in reader:
+    for row in data:
       system = SolarSystem.from_row(row)
       description = SystemDescription({
         'class': system.get_system_class(),
@@ -523,15 +521,15 @@ class EveDb(metaclass=Singleton):
         self.region_systems[description['region_id']] = []
       self.region_systems[description['region_id']].append(description)
 
-  def _init_renames(self, reader):
-    for row in reader:
+  def _init_renames(self, data):
+    for row in data:
       id = int(row[0])
       name = row[1]
       self.system_desc[id]['name'] = name
 
-  def _init_regions(self, reader):
+  def _init_regions(self, data):
     self.regions: Dict[int, Region] = {}
-    for row in reader:
+    for row in data:
       region = Region.from_row(row)
       self.regions[region.regionID] = region
 

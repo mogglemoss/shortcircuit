@@ -63,7 +63,9 @@ def build():
         'mapLocationWormholeClasses.csv',
         'mapSolarSystemJumps.csv',
         'mapSolarSystems.csv',
-        'mapRegions.csv'
+        'mapRegions.csv',
+        'statics.csv',
+        'renames.csv'
     ]
     
     if not os.path.exists(db_src):

@@ -1,5 +1,6 @@
 from shortcircuit.model.evedb import EveDb, SpaceType, WormholeSize, WormholeMassspan, WormholeTimespan
 from shortcircuit.model.solarmap import ConnectionType, SolarMap
+from shortcircuit.model.connection_db import ConnectionData
 
 # FIXME(secondfry): why is `shortest_path` unstable?
 # All tests here should have Jita as destination, not Ikuchi.
@@ -113,19 +114,18 @@ def test_wh_botane_ikuchi():
   eve_db = EveDb()
   map = SolarMap(eve_db)
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      42.21,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=42.21
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),
@@ -163,19 +163,20 @@ def test_wh_botane_ikuchi_but_medium():
   eve_db = EveDb()
   map = SolarMap(eve_db)
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      "Q063",
-      "DEF-456",
-      "K162",
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      42.21,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      code_source="Q063",
+      sig_dest="DEF-456",
+      code_dest="K162",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=42.21
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),
@@ -221,19 +222,18 @@ def test_wh_botane_ikuchi_but_not_eol():
   eve_db = EveDb()
   map = SolarMap(eve_db)
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      42.21,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=42.21
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),
@@ -279,19 +279,18 @@ def test_wh_botane_ikuchi_but_not_crit():
   eve_db = EveDb()
   map = SolarMap(eve_db)
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      42.21,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=42.21
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),
@@ -337,19 +336,18 @@ def test_wh_botane_ikuchi_but_not_stale():
   eve_db = EveDb()
   map = SolarMap(eve_db)
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      42.21,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=42.21
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),
@@ -432,34 +430,32 @@ def test_zarzakh_avoided_as_transit():
   # Jita -> G-0Q86 (wormhole) -> Zarzakh (gate) -> H-PA29 (gate) -> Dodixie (wormhole)
   # Without the Zarzakh exclusion, this would be the shortest path
   map.add_connection(
-    eve_db.name2id("Jita"),
-    eve_db.name2id("G-0Q86"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.LARGE,
-      WormholeTimespan.STABLE,
-      WormholeMassspan.STABLE,
-      1.0,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Jita"),
+      dest_system=eve_db.name2id("G-0Q86"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.LARGE,
+      wh_life=WormholeTimespan.STABLE,
+      wh_mass=WormholeMassspan.STABLE,
+      time_elapsed=1.0
+    )
   )
   map.add_connection(
-    eve_db.name2id("H-PA29"),
-    eve_db.name2id("Dodixie"),
-    ConnectionType.WORMHOLE,
-    [
-      "GHI-789",
-      None,
-      "JKL-012",
-      None,
-      WormholeSize.LARGE,
-      WormholeTimespan.STABLE,
-      WormholeMassspan.STABLE,
-      1.0,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("H-PA29"),
+      dest_system=eve_db.name2id("Dodixie"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="GHI-789",
+      sig_dest="JKL-012",
+      wh_size=WormholeSize.LARGE,
+      wh_life=WormholeTimespan.STABLE,
+      wh_mass=WormholeMassspan.STABLE,
+      time_elapsed=1.0
+    )
   )
   
   path = map.shortest_path(
@@ -502,19 +498,18 @@ def test_zarzakh_as_destination():
   # Add wormhole connection from Ikuchi to G-0Q86
   # This creates a fast path: Ikuchi -> G-0Q86 -> Zarzakh
   map.add_connection(
-    eve_db.name2id("Ikuchi"),
-    eve_db.name2id("G-0Q86"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.LARGE,
-      WormholeTimespan.STABLE,
-      WormholeMassspan.STABLE,
-      1.0,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Ikuchi"),
+      dest_system=eve_db.name2id("G-0Q86"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.LARGE,
+      wh_life=WormholeTimespan.STABLE,
+      wh_mass=WormholeMassspan.STABLE,
+      time_elapsed=1.0
+    )
   )
   
   # Route from Ikuchi to Zarzakh
@@ -558,19 +553,18 @@ def test_zarzakh_as_source():
   # Add wormhole connection from Turnur to Perimeter
   # This creates a fast path: Zarzakh -> Turnur -> Perimeter
   map.add_connection(
-    eve_db.name2id("Turnur"),
-    eve_db.name2id("Perimeter"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.LARGE,
-      WormholeTimespan.STABLE,
-      WormholeMassspan.STABLE,
-      1.0,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Turnur"),
+      dest_system=eve_db.name2id("Perimeter"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.LARGE,
+      wh_life=WormholeTimespan.STABLE,
+      wh_mass=WormholeMassspan.STABLE,
+      time_elapsed=1.0
+    )
   )
   
   # Route from Zarzakh to Perimeter

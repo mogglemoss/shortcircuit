@@ -28,14 +28,26 @@ class Navigation:
     return self.solar_map
 
   def setup_mappers(self):
-    """Configures the mapper registry based on current app settings."""
-    # This is handled by SourceManager now, so we just clear our old reference
-    self.tripwire_instance = None
-    
-    # Try to find a tripwire instance for cookie management if needed
+    """Configures the map sources based on current app settings."""
     from shortcircuit.model.source_manager import SourceManager
     from shortcircuit.model.mapsource import SourceType
+    from shortcircuit.model.tripwire_source import TripwireSource
+    from shortcircuit.model.pathfinder_source import PathfinderSource
+    from shortcircuit.model.evescout_source import EveScoutSource
+    from shortcircuit.model.wanderer_source import WandererSource
+
     sm = SourceManager()
+
+    # Register source classes if not already registered
+    if not sm._registry:
+      sm.register_source_class(SourceType.TRIPWIRE, TripwireSource)
+      sm.register_source_class(SourceType.PATHFINDER, PathfinderSource)
+      sm.register_source_class(SourceType.EVESCOUT, EveScoutSource)
+      sm.register_source_class(SourceType.WANDERER, WandererSource)
+
+    sm.load_configuration()
+
+    self.tripwire_instance = None
     for source in sm.get_enabled_sources():
       if source.type == SourceType.TRIPWIRE:
         self.tripwire_instance = source._tripwire
@@ -45,6 +57,11 @@ class Navigation:
     from shortcircuit.model.source_manager import SourceManager
     sm = SourceManager()
     return sm.fetch_all(solar_map)
+
+  def augment_source(self, solar_map: SolarMap, source_id: str):
+    from shortcircuit.model.source_manager import SourceManager
+    sm = SourceManager()
+    return sm.fetch_one(source_id, solar_map)
 
   # FIXME refactor neighbor info - weights
   @staticmethod

@@ -1,6 +1,6 @@
 import heapq
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 from shortcircuit.model.logger import Logger
 from typing_extensions import Self
@@ -14,6 +14,8 @@ from .evedb import (
   WormholeTimespan,
 )
 
+if TYPE_CHECKING:
+  from shortcircuit.model.connection_db import ConnectionData
 
 class ConnectionType(int, Enum):
   GATE = 1
@@ -62,8 +64,16 @@ class SolarMap:
     self._init_gates()
 
   def _init_gates(self):
+    from shortcircuit.model.connection_db import ConnectionData
     for row in self.eve_db.gates:
-      self.add_connection(row[0], row[1], ConnectionType.GATE, source_id="eve_db")
+      self.add_connection(
+        ConnectionData(
+          source_id="eve_db",
+          source_system=row[0],
+          dest_system=row[1],
+          con_type=ConnectionType.GATE
+        )
+      )
 
   def _build_graph(self):
     if not self._graph_dirty:
@@ -123,43 +133,7 @@ class SolarMap:
     self._build_graph()
     return self.systems_list.keys()
 
-  def add_connection(
-    self,
-    source: int,
-    destination: int,
-    con_type: ConnectionType,
-    con_info: List = None,
-    source_id: str = None,  # Add source_id to track provenance
-  ):
-    from shortcircuit.model.connection_db import ConnectionData
-    if not source_id:
-      source_id = "legacy"
-
-    if con_type == ConnectionType.GATE:
-      conn = ConnectionData(
-        source_id=source_id,
-        source_system=source,
-        dest_system=destination,
-        con_type=ConnectionType.GATE
-      )
-    else:
-      source_name = con_info[8] if len(con_info) > 8 else None
-      conn = ConnectionData(
-        source_id=source_id,
-        source_system=source,
-        dest_system=destination,
-        con_type=ConnectionType.WORMHOLE,
-        sig_source=con_info[0],
-        code_source=con_info[1],
-        sig_dest=con_info[2],
-        code_dest=con_info[3],
-        wh_size=con_info[4],
-        wh_life=con_info[5],
-        wh_mass=con_info[6],
-        time_elapsed=con_info[7],
-        source_name=source_name
-      )
-      
+  def add_connection(self, conn: 'ConnectionData'):
     self.connection_db.add_connection(conn)
     self._graph_dirty = True
 
@@ -296,20 +270,20 @@ class SolarMap:
 def main():
   eve_db = EveDb()
   map = SolarMap(eve_db)
+  from shortcircuit.model.connection_db import ConnectionData
   map.add_connection(
-    eve_db.name2id("Botane"),
-    eve_db.name2id("Ikuchi"),
-    ConnectionType.WORMHOLE,
-    [
-      "ABC-123",
-      None,
-      "DEF-456",
-      None,
-      WormholeSize.SMALL,
-      WormholeTimespan.CRITICAL,
-      WormholeMassspan.CRITICAL,
-      4.25,
-    ],
+    ConnectionData(
+      source_id="test",
+      source_system=eve_db.name2id("Botane"),
+      dest_system=eve_db.name2id("Ikuchi"),
+      con_type=ConnectionType.WORMHOLE,
+      sig_source="ABC-123",
+      sig_dest="DEF-456",
+      wh_size=WormholeSize.SMALL,
+      wh_life=WormholeTimespan.CRITICAL,
+      wh_mass=WormholeMassspan.CRITICAL,
+      time_elapsed=4.25
+    )
   )
   path = map.shortest_path(
     eve_db.name2id("Dodixie"),

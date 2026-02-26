@@ -28,6 +28,7 @@ from .model.tripwire_source import TripwireSource
 from .model.wanderer_source import WandererSource
 from .model.pathfinder_source import PathfinderSource
 from .model.evescout_source import EveScoutSource
+from .model.gui_source_toggles import SourceStatusWidget
 
 
 class StateEVEConnection(TypedDict):
@@ -35,323 +36,6 @@ class StateEVEConnection(TypedDict):
   char_name: Union[str, None]
   error: Union[str, None]
 
-
-class StateEVEScout(TypedDict):
-  connections: int
-  enabled: bool
-  error: Union[str, None]
-
-
-class StateTripwire(TypedDict):
-  connections: int
-  error: Union[str, None]
-
-
-class StatePathfinder(TypedDict):
-  connections: int
-  enabled: bool
-  error: Union[str, None]
-
-
-class StateWanderer(TypedDict):
-  connections: int
-  enabled: bool
-  error: Union[str, None]
-
-
-class TripwireDialog(QtWidgets.QDialog):
-  """
-  Tripwire Configuration Window
-  """
-
-  def __init__(
-    self,
-    trip_url,
-    trip_user,
-    trip_pass,
-    proxy,
-    evescout_enabled,
-    auto_refresh_enabled,
-    auto_refresh_interval,
-    clear_cookies_callback,
-    test_connection_callback,
-    test_pf_callback,
-    pf_url,
-    pf_token,
-    pf_enabled,
-    test_wanderer_callback,
-    wanderer_url,
-    wanderer_map_id,
-    wanderer_token,
-    wanderer_enabled,
-    parent=None,
-  ):
-    super().__init__(parent)
-    self.setWindowTitle("Configuration")
-    self.setMinimumWidth(400)
-
-    main_layout = QtWidgets.QVBoxLayout(self)
-
-    # Tabs
-    self.tabs = QtWidgets.QTabWidget()
-    main_layout.addWidget(self.tabs)
-
-    # --- Tripwire Tab ---
-    self.tab_tripwire = QtWidgets.QWidget()
-    self.tabs.addTab(self.tab_tripwire, "Tripwire")
-    trip_layout = QtWidgets.QVBoxLayout(self.tab_tripwire)
-
-    # Form
-    form_layout = QtWidgets.QFormLayout()
-
-    self.lineEdit_url = QtWidgets.QLineEdit(trip_url)
-    form_layout.addRow("URL:", self.lineEdit_url)
-
-    self.lineEdit_user = QtWidgets.QLineEdit(trip_user)
-    form_layout.addRow("Username:", self.lineEdit_user)
-
-    self.lineEdit_pass = QtWidgets.QLineEdit(trip_pass)
-    self.lineEdit_pass.setEchoMode(QtWidgets.QLineEdit.Password)
-    form_layout.addRow("Password:", self.lineEdit_pass)
-
-    self.lineEdit_proxy = QtWidgets.QLineEdit(proxy)
-    self.lineEdit_proxy.setPlaceholderText("http://user:pass@host:port")
-    form_layout.addRow("Proxy:", self.lineEdit_proxy)
-
-    self.pushButton_test = QtWidgets.QPushButton("Test Connection")
-    self.pushButton_test.clicked.connect(lambda: test_connection_callback(
-        self.lineEdit_url.text(),
-        self.lineEdit_user.text(),
-        self.lineEdit_pass.text(),
-        self.lineEdit_proxy.text()
-    ))
-    form_layout.addRow("", self.pushButton_test)
-
-    # Auto-refresh configuration
-    refresh_widget = QtWidgets.QWidget()
-    refresh_layout = QtWidgets.QHBoxLayout(refresh_widget)
-    refresh_layout.setContentsMargins(0, 0, 0, 0)
-
-    self.checkBox_auto_refresh = QtWidgets.QCheckBox("Enable")
-    self.checkBox_auto_refresh.setChecked(auto_refresh_enabled)
-    refresh_layout.addWidget(self.checkBox_auto_refresh)
-
-    self.spinBox_interval = QtWidgets.QSpinBox()
-    self.spinBox_interval.setRange(10, 600)
-    self.spinBox_interval.setValue(auto_refresh_interval)
-    self.spinBox_interval.setSuffix(" s")
-    refresh_layout.addWidget(self.spinBox_interval)
-    form_layout.addRow("Auto-refresh:", refresh_widget)
-
-    # Clear Cookies
-    self.pushButton_clear_cookies = QtWidgets.QPushButton("Clear Cookies")
-    self.pushButton_clear_cookies.clicked.connect(clear_cookies_callback)
-    form_layout.addRow("Session:", self.pushButton_clear_cookies)
-
-    trip_layout.addLayout(form_layout)
-
-    # Eve-Scout
-    self.checkBox_evescout = QtWidgets.QCheckBox("Enable Eve-Scout (Thera connections)")
-    self.checkBox_evescout.setChecked(evescout_enabled)
-    trip_layout.addWidget(self.checkBox_evescout)
-
-    # Logo / Link
-    self.label_evescout_logo = QtWidgets.QLabel("Eve-Scout")
-    self.label_evescout_logo.setAlignment(QtCore.Qt.AlignCenter)
-    self.label_evescout_logo.setCursor(QtCore.Qt.PointingHandCursor)
-    self.label_evescout_logo.mouseReleaseEvent = TripwireDialog.logo_click
-    trip_layout.addWidget(self.label_evescout_logo)
-    trip_layout.addStretch()
-
-    # --- Pathfinder Tab ---
-    self.tab_pathfinder = QtWidgets.QWidget()
-    self.tabs.addTab(self.tab_pathfinder, "Pathfinder")
-    pf_layout = QtWidgets.QVBoxLayout(self.tab_pathfinder)
-
-    pf_form = QtWidgets.QFormLayout()
-    self.lineEdit_pf_url = QtWidgets.QLineEdit(pf_url)
-    self.lineEdit_pf_url.setPlaceholderText("https://pathfinder.your-corp.com/")
-    pf_form.addRow("URL:", self.lineEdit_pf_url)
-
-    self.lineEdit_pf_token = QtWidgets.QLineEdit(pf_token)
-    self.lineEdit_pf_token.setEchoMode(QtWidgets.QLineEdit.Password)
-    self.lineEdit_pf_token.setToolTip("Check your Pathfinder Profile/Settings for API access")
-    pf_form.addRow("API Token:", self.lineEdit_pf_token)
-
-    lbl_pf_help = QtWidgets.QLabel("Look in: Profile > Settings > API Access")
-    lbl_pf_help.setStyleSheet("color: #abb2bf; font-style: italic; font-size: 11px;")
-    pf_form.addRow("", lbl_pf_help)
-
-    self.pushButton_pf_test = QtWidgets.QPushButton("Test Connection")
-    self.pushButton_pf_test.clicked.connect(lambda: test_pf_callback(
-        self.lineEdit_pf_url.text(),
-        self.lineEdit_pf_token.text()
-    ))
-    pf_form.addRow("", self.pushButton_pf_test)
-    pf_layout.addLayout(pf_form)
-
-    self.checkBox_pf_enabled = QtWidgets.QCheckBox("Enable Pathfinder")
-    self.checkBox_pf_enabled.setChecked(pf_enabled)
-    pf_layout.addWidget(self.checkBox_pf_enabled)
-    pf_layout.addStretch()
-
-    # --- Wanderer Tab ---
-    self.tab_wanderer = QtWidgets.QWidget()
-    self.tabs.addTab(self.tab_wanderer, "Wanderer")
-    wanderer_layout = QtWidgets.QVBoxLayout(self.tab_wanderer)
-
-    wanderer_form = QtWidgets.QFormLayout()
-    self.lineEdit_wanderer_url = QtWidgets.QLineEdit(wanderer_url)
-    self.lineEdit_wanderer_url.setPlaceholderText("https://wanderer.example.com")
-    wanderer_form.addRow("URL:", self.lineEdit_wanderer_url)
-
-    self.lineEdit_wanderer_map_id = QtWidgets.QLineEdit(wanderer_map_id)
-    self.lineEdit_wanderer_map_id.setPlaceholderText("map-slug")
-    wanderer_form.addRow("Map ID:", self.lineEdit_wanderer_map_id)
-
-    self.lineEdit_wanderer_token = QtWidgets.QLineEdit(wanderer_token)
-    self.lineEdit_wanderer_token.setEchoMode(QtWidgets.QLineEdit.Password)
-    wanderer_form.addRow("Token:", self.lineEdit_wanderer_token)
-
-    self.pushButton_wanderer_test = QtWidgets.QPushButton("Test Connection")
-    self.pushButton_wanderer_test.clicked.connect(lambda: test_wanderer_callback(
-        self.lineEdit_wanderer_url.text(),
-        self.lineEdit_wanderer_map_id.text(),
-        self.lineEdit_wanderer_token.text()
-    ))
-    wanderer_form.addRow("", self.pushButton_wanderer_test)
-    wanderer_layout.addLayout(wanderer_form)
-
-    self.checkBox_wanderer_enabled = QtWidgets.QCheckBox("Enable Wanderer")
-    self.checkBox_wanderer_enabled.setChecked(wanderer_enabled)
-    wanderer_layout.addWidget(self.checkBox_wanderer_enabled)
-    wanderer_layout.addStretch()
-
-    # Buttons
-    button_box = QtWidgets.QDialogButtonBox(
-      QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
-    )
-    button_box.accepted.connect(self.accept)
-    button_box.rejected.connect(self.reject)
-    main_layout.addWidget(button_box)
-
-  @staticmethod
-  def logo_click(event):
-    event.accept()
-    QtGui.QDesktopServices.openUrl(QtCore.QUrl("https://www.eve-scout.com/"))
-
-
-class AboutDialog(QtWidgets.QDialog):
-  """
-  About Dialog
-  """
-
-  def __init__(self, check_updates_callback=None, parent=None):
-    super().__init__(parent)
-    self.setWindowTitle("About Short Circuit")
-    self.setFixedSize(400, 380)
-
-    layout = QtWidgets.QVBoxLayout(self)
-
-    # Header
-    header = QtWidgets.QHBoxLayout()
-
-    self.label_title = QtWidgets.QLabel()
-    font = self.label_title.font()
-    font.setPointSize(12)
-    font.setBold(True)
-    self.label_title.setFont(font)
-    self.label_title.setAlignment(QtCore.Qt.AlignCenter)
-    self.label_title.setText(
-      '{} v{} ({})'.format(
-        __appname__,
-        __version__,
-        last_update,
-      )
-    )
-    header.addWidget(self.label_title)
-
-    self.label_icon = QtWidgets.QLabel()
-    self.label_icon.setPixmap(QtGui.QPixmap(":/images/app_icon_small.png"))
-    self.label_icon.setCursor(QtCore.Qt.PointingHandCursor)
-    self.label_icon.mouseReleaseEvent = AboutDialog.icon_click
-    header.addWidget(self.label_icon)
-
-    layout.addLayout(header)
-
-    # Text
-    self.label_2 = QtWidgets.QLabel()
-    self.label_2.setWordWrap(True)
-    self.label_2.setText(
-      "<html><head/><body>"
-      "<p>Short Circuit is an open-source application able to find the shortest path between solar systems (wormholes included) using the Eve SDE and wormhole mapping tools such as Tripwire. Short Circuit can run on all platforms where Python and PySide are supported. </p>"
-      "<p>Original author – Valtyr Farshield. </p>"
-      "<p><span style=\" font-weight:600;\">Maintainer list</span></p>"
-      "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
-      "<li style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Rustam @SecondFry Gubaydullin (Lenai Chelien).</li></ul>"
-      "<p><span style=\" font-weight:600;\">Credits</span></p>"
-      "<ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\">"
-      "<li style=\" margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Daimian Mercer (Tripwire). </li>"
-      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Dreae (PyCrest). </li>"
-      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">pyfa-org (PyFa). </li>"
-      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">EvE-Scout. </li>"
-      "<li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Sharps. </li>"
-      "<li style=\" margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">choo t. </li>"
-      "</ul></body></html>"
-    )
-    self.label_2.setAlignment(QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-    layout.addWidget(self.label_2)
-
-    layout.addStretch()
-
-    # Button
-    btn_layout = QtWidgets.QHBoxLayout()
-    
-    self.pushButton_logs = QtWidgets.QPushButton("Open Logs")
-    self.pushButton_logs.clicked.connect(self.open_logs)
-    btn_layout.addWidget(self.pushButton_logs)
-
-    self.pushButton_debug = QtWidgets.QPushButton("Debug Colors")
-    self.pushButton_debug.clicked.connect(self.debug_colors)
-    btn_layout.addWidget(self.pushButton_debug)
-
-    if check_updates_callback:
-      self.pushButton_updates = QtWidgets.QPushButton("Check Updates")
-      self.pushButton_updates.clicked.connect(check_updates_callback)
-      btn_layout.addWidget(self.pushButton_updates)
-
-    btn_layout.addStretch()
-    self.pushButton_o7 = QtWidgets.QPushButton("  Fly safe o7  ")
-    self.pushButton_o7.clicked.connect(self.close)
-    btn_layout.addWidget(self.pushButton_o7)
-    layout.addLayout(btn_layout)
-
-  @staticmethod
-  def icon_click(event):
-    event.accept()
-    QtGui.QDesktopServices.openUrl(
-      QtCore.QUrl("https://github.com/mogglemoss/shortcircuit")
-    )
-
-  def open_logs(self):
-    app_dirs = AppDirs(__appslug__, "mogglemoss", version=__version__)
-    log_dir = app_dirs.user_log_dir
-    if os.path.exists(log_dir):
-      QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(log_dir))
-
-  def debug_colors(self):
-    if self.parent() and hasattr(self.parent(), 'add_data_to_table'):
-      mock_route = [
-        {'id': 1, 'name': 'Jita', 'class': 'HS', 'security': 0.9, 'path_action': 'Start', 'path_info': ''},
-        {'id': 2, 'name': 'Tama', 'class': 'LS', 'security': 0.3, 'path_action': 'Jump gate', 'path_info': ''},
-        {'id': 3, 'name': 'H-PA29', 'class': 'NS', 'security': -0.1, 'path_action': 'Jump gate', 'path_info': ''},
-        {'id': 4, 'name': 'J123456', 'class': 'C3', 'security': -1.0, 'path_action': 'Jump wormhole', 'path_info': 'Large'},
-        {'id': 5, 'name': 'Thera', 'class': 'WH', 'security': -1.0, 'path_action': 'Jump wormhole', 'path_info': 'XL'},
-      ]
-      self.parent().add_data_to_table(mock_route)
-      if hasattr(self.parent(), 'label_status'):
-        self.parent().label_status.setText("DEBUG COLORS APPLIED")
-      self.close()
 
 class MessageType(Enum):
   INFO = 0
@@ -410,36 +94,12 @@ class MainWindow(QtWidgets.QMainWindow):
     self.source_manager.register_source_class(SourceType.EVESCOUT, EveScoutSource)
     self.source_manager.load_configuration()
 
-    self.tripwire_url = None
-    self.tripwire_user = None
-    self.tripwire_pass = None
     self.global_proxy = None
     self.auto_refresh_enabled = False
     self.auto_refresh_interval = 30
 
-    # Pathfinder settings
-    self.pathfinder_url = None
-    self.pathfinder_token = None
-    self.pathfinder_enabled = False
-
-    # Wanderer settings
-    self.wanderer_url = None
-    self.wanderer_map_id = None
-    self.wanderer_token = None
-    self.wanderer_enabled = False
-
     self.state_eve_connection = StateEVEConnection({
       "connected": False, "char_name": None, "error": None
-    })
-    self.state_evescout = StateEVEScout({
-      "connections": 0, "enabled": False, "error": None
-    })
-    self.state_tripwire = StateTripwire({"connections": 0, "error": None})
-    self.state_pathfinder = StatePathfinder({
-      "connections": 0, "enabled": False, "error": None
-    })
-    self.state_wanderer = StateWanderer({
-      "connections": 0, "enabled": False, "error": None
     })
     
     self.auto_refresh_timer = QtCore.QTimer(self)
@@ -475,25 +135,11 @@ class MainWindow(QtWidgets.QMainWindow):
     # Read stored settings
     self.read_settings()
 
-    self.status_tripwire = QtWidgets.QLabel()
-    self.status_tripwire.setContentsMargins(5, 0, 5, 0)
-    self.statusBar().addPermanentWidget(self.status_tripwire, 0)
-    self._status_tripwire_update()
-
-    self.status_evescout = QtWidgets.QLabel()
-    self.status_evescout.setContentsMargins(5, 0, 5, 0)
-    self.statusBar().addPermanentWidget(self.status_evescout, 0)
-    self._status_evescout_update()
-
-    self.status_pathfinder = QtWidgets.QLabel()
-    self.status_pathfinder.setContentsMargins(5, 0, 5, 0)
-    self.statusBar().addPermanentWidget(self.status_pathfinder, 0)
-    self._status_pathfinder_update()
-
-    self.status_wanderer = QtWidgets.QLabel()
-    self.status_wanderer.setContentsMargins(5, 0, 5, 0)
-    self.statusBar().addPermanentWidget(self.status_wanderer, 0)
-    self._status_wanderer_update()
+    self.status_sources_widget = SourceStatusWidget()
+    self.status_sources_widget.manage_requested.connect(self.btn_trip_config_clicked)
+    self.status_sources_widget.refresh_requested.connect(self.btn_refresh_source_clicked)
+    self.statusBar().addPermanentWidget(self.status_sources_widget, 0)
+    self.source_manager.sources_changed.connect(self.on_sources_changed)
 
     self.status_eve_connection = QtWidgets.QLabel()
     self.status_eve_connection.setContentsMargins(5, 0, 5, 0)
@@ -656,10 +302,6 @@ class MainWindow(QtWidgets.QMainWindow):
     sidebar_layout.addWidget(self._setup_avoidance_group())
 
     sidebar_layout.addStretch()
-
-    self.pushButton_about = QtWidgets.QPushButton("About")
-    self.pushButton_about.clicked.connect(self.open_about)
-    sidebar_layout.addWidget(self.pushButton_about)
 
     # --- Right Main Area ---
     content = QtWidgets.QWidget()
@@ -1049,44 +691,22 @@ class MainWindow(QtWidgets.QMainWindow):
     self.settings.remove('MainWindow/tripwire_pass')
     self.settings.remove('MainWindow/evescout_enable')
 
-  def read_settings_tripwire(self):
-    self.global_proxy = self.settings.value('proxy')
-    self.settings.beginGroup('Tripwire')
-    self.tripwire_url = self.settings.value(
-      'url', 'https://tripwire.eve-apps.com'
-    )
-    self.tripwire_user = self.settings.value('user')
-    self.tripwire_pass = self.settings.value('pass')
-    self.state_evescout["enabled"] = self.settings.value(
-      'evescout_enabled', 'false'
-    ) == 'true'
+  def read_settings_general(self):
+    self.global_proxy = self.settings.value('proxy', '')
     self.auto_refresh_enabled = self.settings.value('auto_refresh_enabled', 'false') == 'true'
     self.auto_refresh_interval = int(self.settings.value('auto_refresh_interval', 30))
-    self.settings.endGroup()
-
-    self.settings.beginGroup('Pathfinder')
-    self.pathfinder_url = self.settings.value('url', '')
-    self.pathfinder_token = self.settings.value('token', '')
-    self.pathfinder_enabled = self.settings.value('enabled', 'false') == 'true'
-    self.settings.endGroup()
-
-    self.settings.beginGroup('Wanderer')
-    self.wanderer_url = self.settings.value('url', '')
-    self.wanderer_map_id = self.settings.value('map_id', '')
-    self.wanderer_token = self.settings.value('token', '')
-    self.wanderer_enabled = self.settings.value('enabled', 'false') == 'true'
-    self.settings.endGroup()
 
     self.update_auto_refresh_state()
     self.nav.setup_mappers()
 
-    if self.tripwire_user and self.tripwire_pass:
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    if has_active:
       self.pushButton_trip_get.setEnabled(True)
 
   def read_settings(self):
     if self.settings.value('MainWindow/tripwire_url'):
       self.migrate_settings_tripwire()
-    self.read_settings_tripwire()
+    self.read_settings_general()
 
     self.settings.beginGroup("MainWindow")
 
@@ -1146,32 +766,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     self.settings.endGroup()
 
-  def write_settings_tripwire(self):
-    self.settings.setValue('proxy', self.global_proxy)
-    self.settings.beginGroup('Tripwire')
-    self.settings.setValue('url', self.tripwire_url)
-    self.settings.setValue('user', self.tripwire_user)
-    self.settings.setValue('pass', self.tripwire_pass)
-    self.settings.setValue('evescout_enabled', self.state_evescout["enabled"])
-    self.settings.setValue('auto_refresh_enabled', self.auto_refresh_enabled)
-    self.settings.setValue('auto_refresh_interval', self.auto_refresh_interval)
-    self.settings.endGroup()
-
-    self.settings.beginGroup('Pathfinder')
-    self.settings.setValue('url', self.pathfinder_url)
-    self.settings.setValue('token', self.pathfinder_token)
-    self.settings.setValue('enabled', self.pathfinder_enabled)
-    self.settings.endGroup()
-
-    self.settings.beginGroup('Wanderer')
-    self.settings.setValue('url', self.wanderer_url)
-    self.settings.setValue('map_id', self.wanderer_map_id)
-    self.settings.setValue('token', self.wanderer_token)
-    self.settings.setValue('enabled', self.wanderer_enabled)
-    self.settings.endGroup()
+  def write_settings_general(self):
+    self.settings.setValue('proxy', getattr(self, 'global_proxy', ''))
+    self.settings.setValue('auto_refresh_enabled', getattr(self, 'auto_refresh_enabled', False))
+    self.settings.setValue('auto_refresh_interval', getattr(self, 'auto_refresh_interval', 30))
 
   def write_settings(self):
-    self.write_settings_tripwire()
+    self.write_settings_general()
 
     self.settings.beginGroup("MainWindow")
 
@@ -1242,12 +843,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
   def _status_eve_connection(self, message, message_type=MessageType.INFO):
     MainWindow._label_message(self.status_eve_connection, message, message_type)
-
-  def _status_evescout(self, message, message_type=MessageType.INFO):
-    MainWindow._label_message(self.status_evescout, message, message_type)
-
-  def _status_tripwire(self, message, message_type=MessageType.INFO):
-    MainWindow._label_message(self.status_tripwire, message, message_type)
 
   def avoidance_enabled(self) -> bool:
     return self.groupBox_avoidance.isChecked()
@@ -1550,75 +1145,60 @@ class MainWindow(QtWidgets.QMainWindow):
     if hasattr(self, 'lbl_header'):
       self.lbl_header.setText("DAYTRIPPER")
 
-  def _status_evescout_update(self):
-    if not self.state_evescout["enabled"]:
-      self._status_evescout("Eve-Scout: disabled")
-      return
+  def on_sources_changed(self):
+    self.update_auto_refresh_state()
 
-    if self.state_evescout["error"]:
-      self._status_evescout("Eve-Scout: disabled", MessageType.ERROR)
-      return
+    newly_enabled_ids = []
+    # Immediately clear data for disabled sources from the map
+    for source in self.source_manager.get_sources():
+      if not source.enabled:
+        self.nav.solar_map.connection_db.clear_source(source.id)
+        self.nav.solar_map._graph_dirty = True
+        # Clear last fetch result so it doesn't show outdated numbers in the status bar
+        if hasattr(self, 'last_fetch_results') and source.name in self.last_fetch_results:
+          del self.last_fetch_results[source.name]
+      else:
+        # Check if this enabled source has data (or attempted to get data)
+        if not hasattr(self, 'last_fetch_results') or source.name not in self.last_fetch_results:
+          newly_enabled_ids.append(source.id)
 
-    if not self.state_evescout["connections"]:
-      self._status_evescout("Eve-Scout: enabled")
-      return
+    self._update_sources_status()
+    
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    self.pushButton_trip_get.setEnabled(has_active and not self.worker_thread.isRunning())
 
-    self._status_evescout(
-      "Eve-Scout: {} connections".format(self.state_evescout["connections"]),
-      MessageType.OK
-    )
+    # If we have newly enabled sources and no worker is running, trigger a fetch
+    if newly_enabled_ids and has_active and not self.worker_thread.isRunning():
+      if len(newly_enabled_ids) == 1:
+        self.btn_refresh_source_clicked(newly_enabled_ids[0])
+      else:
+        self.btn_trip_get_clicked()
 
-  def _status_tripwire_update(self):
-    if self.state_tripwire["error"]:
-      self._status_tripwire("Tripwire: error", MessageType.ERROR)
-      return
+  def _update_sources_status(self):
+    total_connections = 0
+    active_count = 0
+    has_errors = False
+    
+    sources = self.source_manager.get_sources()
 
-    if not self.state_tripwire["connections"]:
-      self._status_tripwire("Tripwire: enabled")
-      return
+    for src in sources:
+      result = getattr(self, 'last_fetch_results', {}).get(src.name)
+      if src.enabled:
+        active_count += 1
+        if result is not None and result < 0:
+          has_errors = True
+        elif result is not None:
+          total_connections += result
 
-    self._status_tripwire(
-      "Tripwire: {} connections".format(self.state_tripwire["connections"]),
-      MessageType.OK
-    )
-
-  def _status_pathfinder_update(self):
-    if not self.pathfinder_enabled:
-      self._label_message(self.status_pathfinder, "Pathfinder: disabled", MessageType.INFO)
-      return
-
-    if self.state_pathfinder["error"]:
-      self._label_message(self.status_pathfinder, "Pathfinder: error", MessageType.ERROR)
-      return
-
-    if not self.state_pathfinder["connections"]:
-      self._label_message(self.status_pathfinder, "Pathfinder: enabled", MessageType.INFO)
-      return
-
-    self._label_message(
-      self.status_pathfinder,
-      "Pathfinder: {} connections".format(self.state_pathfinder["connections"]),
-      MessageType.OK
-    )
-
-  def _status_wanderer_update(self):
-    if not self.wanderer_enabled:
-      self._label_message(self.status_wanderer, "Wanderer: disabled", MessageType.INFO)
-      return
-
-    if self.state_wanderer["error"]:
-      self._label_message(self.status_wanderer, "Wanderer: error", MessageType.ERROR)
-      return
-
-    if not self.state_wanderer["connections"]:
-      self._label_message(self.status_wanderer, "Wanderer: enabled", MessageType.INFO)
-      return
-
-    self._label_message(
-      self.status_wanderer,
-      "Wanderer: {} connections".format(self.state_wanderer["connections"]),
-      MessageType.OK
-    )
+    if has_errors:
+      self.status_sources_widget.setText(f"Sources: {active_count} Active ({total_connections} conn) - ERRORS")
+      self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
+    else:
+      self.status_sources_widget.setText(f"Sources: {active_count} Active ({total_connections} conn)")
+      if active_count > 0:
+        self.status_sources_widget.setStyleSheet("color: #98c379;")
+      else:
+        self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
   @QtCore.Slot(str)
   def login_handler(self, is_ok, char_name):
@@ -1661,34 +1241,13 @@ class MainWindow(QtWidgets.QMainWindow):
     while self.worker_thread.isRunning():
       time.sleep(0.01)
 
-    # Eve Scout
-    evescout_connections = results.get("Eve Scout", 0)
-    self.state_evescout["connections"] = evescout_connections
-    if evescout_connections < 0:
-      self.state_evescout["error"] = "error"
-    self._status_evescout_update()
+    if not hasattr(self, 'last_fetch_results'):
+      self.last_fetch_results = {}
+    self.last_fetch_results.update(results)
+    self._update_sources_status()
 
-    # Tripwire
-    connections = results.get("Tripwire", 0)
-    self.state_tripwire["connections"] = connections
-    if connections < 0:
-      self.state_tripwire["error"] = "error. Check url/user/pass."
-    self._status_tripwire_update()
-
-    # Pathfinder
-    pf_connections = results.get("Pathfinder", 0)
-    self.state_pathfinder["connections"] = pf_connections
-    self.state_pathfinder["error"] = "error" if pf_connections < 0 else None
-    self._status_pathfinder_update()
-
-    # Wanderer
-    wanderer_connections = results.get("Wanderer", 0)
-    self.state_wanderer["connections"] = wanderer_connections
-    self.state_wanderer["error"] = "error" if wanderer_connections < 0 else None
-    self._status_wanderer_update()
-
-    if self.tripwire_user and self.tripwire_pass:
-      self.pushButton_trip_get.setEnabled(True)
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    self.pushButton_trip_get.setEnabled(has_active and not self.worker_thread.isRunning())
     self.pushButton_find_path.setEnabled(True)
 
   @QtCore.Slot()
@@ -1732,143 +1291,58 @@ class MainWindow(QtWidgets.QMainWindow):
 
   @QtCore.Slot()
   def btn_trip_config_clicked(self):
-    tripwire_dialog = TripwireDialog(
-      self.tripwire_url,
-      self.tripwire_user,
-      self.tripwire_pass,
-      self.global_proxy,
-      self.state_evescout["enabled"],
-      self.auto_refresh_enabled,
-      self.auto_refresh_interval,
-      self.clear_tripwire_cookies,
-      self.test_tripwire_connection,
-      self.test_pathfinder_connection,
-      self.pathfinder_url,
-      self.pathfinder_token,
-      self.pathfinder_enabled,
-      self.test_wanderer_connection,
-      self.wanderer_url,
-      self.wanderer_map_id,
-      self.wanderer_token,
-      self.wanderer_enabled,
-    )
-
-    if not tripwire_dialog.exec():
+    from shortcircuit.model.utility.gui_sources import SourceConfigurationDialog
+    dialog = SourceConfigurationDialog(self.source_manager, self)
+    if not dialog.exec():
       return
 
-    self.tripwire_url = tripwire_dialog.lineEdit_url.text()
-    self.tripwire_user = tripwire_dialog.lineEdit_user.text()
-    self.tripwire_pass = tripwire_dialog.lineEdit_pass.text()
-    self.global_proxy = tripwire_dialog.lineEdit_proxy.text()
-
-    self.pathfinder_url = tripwire_dialog.lineEdit_pf_url.text()
-    self.pathfinder_token = tripwire_dialog.lineEdit_pf_token.text()
-    self.pathfinder_enabled = tripwire_dialog.checkBox_pf_enabled.isChecked()
-
-    self.wanderer_url = tripwire_dialog.lineEdit_wanderer_url.text()
-    self.wanderer_map_id = tripwire_dialog.lineEdit_wanderer_map_id.text()
-    self.wanderer_token = tripwire_dialog.lineEdit_wanderer_token.text()
-    self.wanderer_enabled = tripwire_dialog.checkBox_wanderer_enabled.isChecked()
-
     self.nav.setup_mappers()
-    self.state_evescout["enabled"
-                        ] = tripwire_dialog.checkBox_evescout.isChecked()
-    
-    self.auto_refresh_enabled = tripwire_dialog.checkBox_auto_refresh.isChecked()
-    self.auto_refresh_interval = tripwire_dialog.spinBox_interval.value()
     self.update_auto_refresh_state()
-
-    self._status_evescout_update()
-    self._status_pathfinder_update()
-    self._status_wanderer_update()
-    self.write_settings_tripwire()
-
-    if self.tripwire_user and self.tripwire_pass:
-      if not self.worker_thread.isRunning():
-        self.pushButton_trip_get.setEnabled(True)
-    else:
-      self.pushButton_trip_get.setEnabled(False)
+    self.on_sources_changed()
+    
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    self.pushButton_trip_get.setEnabled(has_active and not self.worker_thread.isRunning())
 
   def update_auto_refresh_state(self):
     self.auto_refresh_timer.setInterval(self.auto_refresh_interval * 1000)
-    if self.auto_refresh_enabled and self.tripwire_user and self.tripwire_pass:
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    if self.auto_refresh_enabled and has_active:
       if not self.auto_refresh_timer.isActive():
         self.auto_refresh_timer.start()
     else:
       self.auto_refresh_timer.stop()
 
+  @QtCore.Slot(str)
+  def btn_refresh_source_clicked(self, source_id):
+    self.nav_processor.source_id = source_id
+    self._start_worker()
+
   @QtCore.Slot()
   def btn_trip_get_clicked(self):
+    self.nav_processor.source_id = None
+    self._start_worker()
+
+  def _start_worker(self):
     if not self.worker_thread.isRunning():
       self.pushButton_trip_get.setEnabled(False)
       self.pushButton_find_path.setEnabled(False)
-      self.nav_processor.evescout_enable = self.state_evescout["enabled"]
       self.worker_thread.start()
     else:
-      self.state_tripwire['error'] = "error. Process is already running."
-      self._status_tripwire_update()
-
-  def clear_tripwire_cookies(self):
-    if self.nav.tripwire_instance:
-      self.nav.tripwire_instance.clear_cookies()
-    self._message_box("Tripwire", "Cookies cleared!")
-
-  def test_tripwire_connection(self, url, user, password, proxy):
-    from shortcircuit.model.tripwire import Tripwire
-
-    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-    try:
-      tw = Tripwire(user, password, url)
-      success, message = tw.test_credentials(proxy)
-    except Exception as e:
-      success = False
-      message = str(e)
-    finally:
-      QtWidgets.QApplication.restoreOverrideCursor()
-
-    self._message_box("Tripwire Connection", f"{'Success' if success else 'Failed'}: {message}")
-
-  def test_pathfinder_connection(self, url, token):
-    from shortcircuit.model.pathfinder import Pathfinder
-
-    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-    try:
-      pf = Pathfinder(url, token)
-      success, message = pf.test_credentials()
-    except Exception as e:
-      success = False
-      message = str(e)
-    finally:
-      QtWidgets.QApplication.restoreOverrideCursor()
-
-    self._message_box("Pathfinder Connection", f"{'Success' if success else 'Failed'}: {message}")
-
-  def test_wanderer_connection(self, url, map_id, token):
-    from shortcircuit.model.wanderer import Wanderer
-
-    QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-    try:
-      wd = Wanderer(url, map_id, token)
-      success, message = wd.test_credentials()
-    except Exception as e:
-      success = False
-      message = str(e)
-    finally:
-      QtWidgets.QApplication.restoreOverrideCursor()
-
-    self._message_box("Wanderer Connection", f"{'Success' if success else 'Failed'}: {message}")
+      self._update_sources_status()
+      self._message_box("Map Sources", "Update process is already running.")
 
   @QtCore.Slot()
   def auto_refresh_triggered(self):
-    if not self.worker_thread.isRunning() and self.tripwire_user and self.tripwire_pass:
+    from shortcircuit.model.mapsource import SourceType
+    has_active = any(s.enabled for s in self.source_manager.sources)
+    if not self.worker_thread.isRunning() and has_active:
       self.btn_trip_get_clicked()
     elif self.worker_thread.isRunning():
       # Silently skip if already running to avoid spamming status bar
       pass
     else:
       # Credentials missing or other issue
-      self.state_tripwire['error'] = "Auto-refresh failed: check credentials"
-      self._status_tripwire_update()
+      self._update_sources_status()
 
   @QtCore.Slot()
   def btn_system_avoid_add_clicked(self):
@@ -1891,7 +1365,7 @@ class MainWindow(QtWidgets.QMainWindow):
   def btn_reset_clicked(self):
     msg_box = QtWidgets.QMessageBox(self)
     msg_box.setWindowTitle("Reset chain")
-    msg_box.setText("Are you sure you want to clear all Tripwire data?")
+    msg_box.setText("Are you sure you want to clear all Map Source data?")
     msg_box.setStandardButtons(
       QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
     )
@@ -1900,14 +1374,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     if ret == QtWidgets.QMessageBox.Yes:
       self.nav.reset_chain()
-      self.state_evescout["connections"] = 0
-      self.state_tripwire["connections"] = 0
-      self.state_pathfinder["connections"] = 0
-      self.state_wanderer["connections"] = 0
-      self._status_pathfinder_update()
-      self._status_wanderer_update()
-      self._status_evescout_update()
-      self._status_tripwire_update()
+      self.last_fetch_results = {}
+      self._update_sources_status()
 
   @QtCore.Slot()
   def line_edit_system_avoid_name_return(self):
@@ -1950,13 +1418,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._table_style(50, 70, 90)
 
       self.lineEdit_set_dest.setText(selection[0].text())
-
-  def open_about(self):
-    AboutDialog(self.trigger_version_check, self).exec()
-
-  def trigger_version_check(self):
-    self._path_message("Checking for updates...", MessageType.INFO)
-    self.start_version_check.emit()
 
   @QtCore.Slot(str)
   def version_check_done(self, latest):

@@ -145,21 +145,23 @@ class Pathfinder:
         except ValueError:
           pass
 
+      from shortcircuit.model.connection_db import ConnectionData
       solar_map.add_connection(
-        source_id,
-        dest_id,
-        ConnectionType.WORMHOLE,
-        [
-          sig_source,
-          wh_type,
-          sig_dest,
-          'K162',
-          wh_size,
-          wh_life,
-          wh_mass,
-          time_elapsed,
-          self.get_name(),
-        ],
+        ConnectionData(
+          source_id=self.get_name(),
+          source_system=source_id,
+          dest_system=dest_id,
+          con_type=ConnectionType.WORMHOLE,
+          sig_source=sig_source,
+          code_source=wh_type,
+          sig_dest=sig_dest,
+          code_dest='K162',
+          wh_size=wh_size,
+          wh_life=wh_life,
+          wh_mass=wh_mass,
+          time_elapsed=time_elapsed,
+          source_name=self.get_name()
+        )
       )
       return True
     except Exception as e:

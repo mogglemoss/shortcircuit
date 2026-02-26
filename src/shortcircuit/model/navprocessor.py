@@ -16,8 +16,8 @@ class NavProcessor(QtCore.QObject):
 
   def __init__(self, nav: Navigation, parent=None):
     super().__init__(parent)
-    self.evescout_enable = False
     self.nav = nav
+    self.source_id = None
 
   def process(self):
     if 'DEBUG' in os.environ:
@@ -25,10 +25,14 @@ class NavProcessor(QtCore.QObject):
       debugpy.debug_this_thread()
     
     try:
-      solar_map = self.nav.reset_chain()
-      
-      # Fetch data from all registered mappers
-      results = self.nav.augment_map(solar_map)
+      if self.source_id:
+        # Partial refresh: use existing map
+        solar_map = self.nav.solar_map
+        results = self.nav.augment_source(solar_map, self.source_id)
+      else:
+        # Full refresh: reset chain
+        solar_map = self.nav.reset_chain()
+        results = self.nav.augment_map(solar_map)
       
       # Check if we have any connections from any source
       total_connections = sum(count for count in results.values() if count > 0)
@@ -39,3 +43,5 @@ class NavProcessor(QtCore.QObject):
     except BaseException as e:
       Logger.error(f"NavProcessor exception: {e}", exc_info=True)
       self.finished.emit({})
+    finally:
+      self.source_id = None

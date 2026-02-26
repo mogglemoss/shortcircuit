@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from shortcircuit.model.tripwire import Tripwire
 from shortcircuit.model.solarmap import SolarMap, ConnectionType
 from shortcircuit.model.evedb import EveDb, WormholeSize, WormholeTimespan, WormholeMassspan
+from shortcircuit.model.connection_db import ConnectionData
 
 
 def test_gate_wormhole_is_processed():
@@ -63,27 +64,24 @@ def test_gate_wormhole_is_processed():
     assert solar_map.add_connection.called, "add_connection should have been called"
     
     # Verify the connection parameters
-    call_args = solar_map.add_connection.call_args[0]
-    system_from = call_args[0]
-    system_to = call_args[1]
-    connection_type = call_args[2]
-    wh_info = call_args[3]
+    conn = solar_map.add_connection.call_args[0][0]
+    system_from = conn.source_system
+    system_to = conn.dest_system
+    connection_type = conn.con_type
     
     assert system_from == 30000142, "System from should be Jita"
     assert system_to == 30002187, "System to should be Dodixie"
     assert connection_type == ConnectionType.WORMHOLE, "Should be added as WORMHOLE type"
     
     # Check the wormhole info array
-    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed, source] = wh_info
-    
-    assert sig_in == 'ABC----', "Signature in should be formatted as ABC----"
-    assert code_in == 'GATE', "Wormhole code should be GATE"
-    assert sig_out == 'DEF----', "Signature out should be formatted as DEF----"
-    assert code_out == 'GATE', "Wormhole code out should be GATE (both sides are GATE)"
-    assert wh_life == WormholeTimespan.STABLE, "GATE wormholes should have STABLE timespan (permanent)"
-    assert wh_mass == WormholeMassspan.STABLE, "GATE wormholes should have STABLE massspan (permanent)"
-    assert wh_size == WormholeSize.UNKNOWN, "GATE wormholes should have UNKNOWN size (permanent connections don't have size restrictions)"
-    assert source == "Tripwire", "Source should be Tripwire"
+    assert conn.sig_source == 'ABC----', "Signature in should be formatted as ABC----"
+    assert conn.code_source == 'GATE', "Wormhole code should be GATE"
+    assert conn.sig_dest == 'DEF----', "Signature out should be formatted as DEF----"
+    assert conn.code_dest == 'GATE', "Wormhole code out should be GATE (both sides are GATE)"
+    assert conn.wh_life == WormholeTimespan.STABLE, "GATE wormholes should have STABLE timespan (permanent)"
+    assert conn.wh_mass == WormholeMassspan.STABLE, "GATE wormholes should have STABLE massspan (permanent)"
+    assert conn.wh_size == WormholeSize.UNKNOWN, "GATE wormholes should have UNKNOWN size (permanent connections don't have size restrictions)"
+    assert conn.source_id == "Tripwire", "Source should be Tripwire"
 
 
 def test_regular_wormhole_respects_life_and_mass():
@@ -136,15 +134,13 @@ def test_regular_wormhole_respects_life_and_mass():
     assert result == 1, f"Expected 1 connection, got {result}"
     
     # Check the wormhole info - should respect the life and mass from the wormhole data
-    call_args = solar_map.add_connection.call_args[0]
-    wh_info = call_args[3]
-    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed, source] = wh_info
+    conn = solar_map.add_connection.call_args[0][0]
     
-    assert code_in == 'C140', "Wormhole type should be C140"
-    assert code_out == 'K162', "Wormhole code out should be K162"
-    assert wh_life == WormholeTimespan.CRITICAL, "Should have CRITICAL timespan from wormhole data"
-    assert wh_mass == WormholeMassspan.DESTAB, "Should have DESTAB massspan from wormhole data"
-    assert wh_size == WormholeSize.SMALL, "Size should be determined by wormhole code"
+    assert conn.code_source == 'C140', "Wormhole type should be C140"
+    assert conn.code_dest == 'K162', "Wormhole code out should be K162"
+    assert conn.wh_life == WormholeTimespan.CRITICAL, "Should have CRITICAL timespan from wormhole data"
+    assert conn.wh_mass == WormholeMassspan.DESTAB, "Should have DESTAB massspan from wormhole data"
+    assert conn.wh_size == WormholeSize.SMALL, "Size should be determined by wormhole code"
 
 
 def test_gate_wormhole_in_route_calculation():
@@ -154,20 +150,21 @@ def test_gate_wormhole_in_route_calculation():
     
     # Add a GATE wormhole connection (simulating what Tripwire would add)
     solar_map.add_connection(
-        eve_db.name2id("Jita"),
-        eve_db.name2id("Dodixie"),
-        ConnectionType.WORMHOLE,
-        [
-            "ABC-123",
-            "GATE",
-            "DEF-456",
-            "----",
-            WormholeSize.LARGE,
-            WormholeTimespan.STABLE,
-            WormholeMassspan.STABLE,
-            0.5,  # Updated 0.5 hours ago
-            "Test",
-        ],
+        ConnectionData(
+            source_id="Test",
+            source_system=eve_db.name2id("Jita"),
+            dest_system=eve_db.name2id("Dodixie"),
+            con_type=ConnectionType.WORMHOLE,
+            sig_source="ABC-123",
+            code_source="GATE",
+            sig_dest="DEF-456",
+            code_dest="----",
+            wh_size=WormholeSize.LARGE,
+            wh_life=WormholeTimespan.STABLE,
+            wh_mass=WormholeMassspan.STABLE,
+            time_elapsed=0.5,
+            source_name="Test"
+        )
     )
     
     # Calculate a route that should use the GATE wormhole

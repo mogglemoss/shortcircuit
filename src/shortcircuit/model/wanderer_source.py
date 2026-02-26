@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from shortcircuit.model.mapsource import MapSource, SourceType
 from shortcircuit.model.wanderer import Wanderer
 from shortcircuit.model.solarmap import SolarMap
@@ -24,6 +24,10 @@ class WandererSource(MapSource):
         # Temporarily tell the wanderer instance its name so connections are tagged correctly
         self._wanderer.name = self.id
         
+        return self._fetch_data(solar_map)
+
+    def _fetch_data(self, solar_map: SolarMap) -> int:
+
         connections_added = self._wanderer.augment_map(solar_map)
         
         # Restore actual name
@@ -31,14 +35,18 @@ class WandererSource(MapSource):
         
         return connections_added
 
-    def connect(self) -> bool:
+    def fetch_test_data(self) -> int:
+        """Fetch data for testing purposes, without modifying the SolarMap."""
+        return self._wanderer.augment_map(SolarMap(None))
+
+    def connect(self) -> Tuple[bool, str]:
         """Test connection or authenticate."""
-        success, _ = self._wanderer.test_credentials()
-        return success
+        return self._wanderer.test_credentials()
 
     def get_status(self) -> str:
         """Get current connection status."""
-        return "Connected" if self.connect() else "Disconnected"
+        success, _ = self.connect()
+        return "Connected" if success else "Disconnected"
 
     def to_json(self) -> Dict[str, Any]:
         """Serialize source config to dict."""

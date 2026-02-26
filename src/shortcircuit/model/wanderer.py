@@ -3,12 +3,15 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Tuple, Optional, Dict, List
+from typing import Tuple, Optional, Dict, List, TYPE_CHECKING
 
+import httpx
 from .evedb import EveDb, WormholeSize, WormholeMassspan, WormholeTimespan
 from .logger import Logger
 from .solarmap import ConnectionType, SolarMap
 
+if TYPE_CHECKING:
+  from shortcircuit.model.connection_db import ConnectionData
 
 class Wanderer:
   def __init__(self, url: str, map_id: str, token: str, name: str = "Wanderer"):
@@ -29,8 +32,6 @@ class Wanderer:
     return asyncio.run(self._test_credentials_async())
 
   async def _test_credentials_async(self) -> Tuple[bool, str]:
-    import httpx
-
     if not self.url or not self.map_id or not self.token:
       return False, "Missing URL, Map ID, or Token"
 
@@ -54,8 +55,6 @@ class Wanderer:
       return False, f"Error: {e}"
 
   async def _get_signatures_async(self) -> Optional[List[Dict]]:
-    import httpx
-
     if not self.url or not self.map_id or not self.token:
       return None
 
@@ -159,21 +158,23 @@ class Wanderer:
       # Add connection
       wh_type_out = 'K162' if wh_type != '????' and wh_type != 'K162' else '????'
       
+      from shortcircuit.model.connection_db import ConnectionData
       solar_map.add_connection(
-        system_id,
-        linked_system_id,
-        ConnectionType.WORMHOLE,
-        [
-          sig_id,
-          wh_type,
-          '???', # Out signature unknown
-          wh_type_out,
-          wh_size,
-          wh_life,
-          wh_mass,
-          time_elapsed,
-          self.get_name(),
-        ],
+        ConnectionData(
+          source_id=self.get_name(),
+          source_system=system_id,
+          dest_system=linked_system_id,
+          con_type=ConnectionType.WORMHOLE,
+          sig_source=sig_id,
+          code_source=wh_type,
+          sig_dest='???',
+          code_dest=wh_type_out,
+          wh_size=wh_size,
+          wh_life=wh_life,
+          wh_mass=wh_mass,
+          time_elapsed=time_elapsed,
+          source_name=self.get_name()
+        )
       )
       connections_added += 1
 

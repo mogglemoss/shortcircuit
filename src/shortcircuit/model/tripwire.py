@@ -485,23 +485,24 @@ class Tripwire:
     delta = datetime.now(timezone.utc) - last_modified
     time_elapsed = round(delta.total_seconds() / 3600.0, 1)
 
+    from shortcircuit.model.connection_db import ConnectionData
     # Add wormhole connection to solar system
     solar_map.add_connection(
-      system_from,
-      system_to,
-      ConnectionType.WORMHOLE,
-      [
-        sig_id_in,
-        wh_type_in,
-        sig_id_out,
-        wh_type_out,
-        wh_size,
-        wh_life,
-        wh_mass,
-        time_elapsed,
-        self.get_name(),
-      ],
-      source_id=self.get_name()
+      ConnectionData(
+        source_id=self.get_name(),
+        source_system=system_from,
+        dest_system=system_to,
+        con_type=ConnectionType.WORMHOLE,
+        sig_source=sig_id_in,
+        code_source=wh_type_in,
+        sig_dest=sig_id_out,
+        code_dest=wh_type_out,
+        wh_size=wh_size,
+        wh_life=wh_life,
+        wh_mass=wh_mass,
+        time_elapsed=time_elapsed,
+        source_name=self.get_name()
+      )
     )
     return True
 

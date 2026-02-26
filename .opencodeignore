@@ -1,0 +1,3 @@
+# Dependency folders (The biggest culprits) node_modules/ bower_components/ vendor/ # Build outputs dist/ build/ out/ .next/ .nuxt/ # IDE and OS files .vscode/ .idea/ .DS_Store 
+Thumbs.db # Large data/log files *.log *.sqlite data/ temp/ # Hidden AI/Opencode cache
+.opencode/

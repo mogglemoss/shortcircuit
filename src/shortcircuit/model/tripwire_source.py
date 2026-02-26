@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from shortcircuit.model.mapsource import MapSource, SourceType
 from shortcircuit.model.tripwire import Tripwire
 from shortcircuit.model.solarmap import SolarMap
@@ -30,14 +30,14 @@ class TripwireSource(MapSource):
         
         return connections_added
 
-    def connect(self) -> bool:
+    def connect(self) -> Tuple[bool, str]:
         """Test connection or authenticate."""
-        success, _ = self._tripwire.test_credentials()
-        return success
+        return self._tripwire.test_credentials()
 
     def get_status(self) -> str:
         """Get current connection status."""
-        return "Connected" if self.connect() else "Disconnected"
+        success, _ = self.connect()
+        return "Connected" if success else "Disconnected"
 
     def to_json(self) -> Dict[str, Any]:
         """Serialize source config to dict."""
