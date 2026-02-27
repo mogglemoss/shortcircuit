@@ -9,6 +9,7 @@ iniconfig==2.3.0
 isort==7.0.0
 mccabe==0.7.0
 packaging==26.0
+pefile==2024.8.26; sys_platform == 'win32'
 platformdirs==4.5.1
 pluggy==1.6.0
 pygments==2.19.2
