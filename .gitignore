@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 version.py
+src/version.py
 
 # Distribution / Build Artifacts
 build/

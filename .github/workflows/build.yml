@@ -8,11 +8,11 @@ on:
     branches: [ "master", "main" ]
   workflow_dispatch:
 
-jobs:
-  concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   build:
     name: Desktop Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -123,19 +123,30 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
           PYTHON_VERSION: '3.10'
+          DEPLOY_REQUIREMENTS_FILE: 'requirements.txt'
         run: |
           cat > shortcircuit.desktop <<EOF
           [Desktop Entry]
           Name=Short Circuit
-          Exec=python3 src/main.py
+          Exec=python3 main.py
           Icon=shortcircuit
           Type=Application
           Categories=Utility;
           EOF
+          
           mkdir -p AppDir/usr/bin
-          cp -rv src/ docs/ requirements.txt AppDir/usr/bin/
+          # Flatten src so main.py and the shortcircuit package are in usr/bin
+          cp -rv src/* AppDir/usr/bin/
+          cp -rv docs/ AppDir/usr/bin/
+          
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin python --output appimage \
             --desktop-file shortcircuit.desktop --icon-file docs/Daytripper.png
+
+      - name: Verify AppImage Structure
+        run: |
+          chmod +x *.AppImage
+          ./*.AppImage --appimage-extract
+          find squashfs-root/usr/bin/database/ -name "*.csv"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
