@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-13]
+        os: [windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -30,7 +30,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.13'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -112,9 +112,9 @@ jobs:
 
       - name: Download linuxdeploy and plugins
         run: |
-          curl -fL --retry 5 --retry-delay 5 -o linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          curl -fL --retry 5 --retry-delay 5 -o linuxdeploy-plugin-python-x86_64.AppImage https://github.com/niess/linuxdeploy-plugin-python/releases/download/continuous/linuxdeploy-plugin-python-x86_64.AppImage
-          curl -fL --retry 5 --retry-delay 5 -o appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-python/releases/download/continuous/linuxdeploy-plugin-python-x86_64.AppImage
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-python-x86_64.AppImage appimagetool-x86_64.AppImage
           sudo mv linuxdeploy-plugin-python-x86_64.AppImage /usr/local/bin/linuxdeploy-plugin-python
           sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
@@ -128,23 +128,15 @@ jobs:
           cat > shortcircuit.desktop <<EOF
           [Desktop Entry]
           Name=Short Circuit
-          Exec=python3 main.py
+          Exec=python3 src/main.py
           Icon=shortcircuit
           Type=Application
           Categories=Utility;
           EOF
           mkdir -p AppDir/usr/bin
-          # Flatten src so main.py and the shortcircuit package are in usr/bin
-          cp -rv src/* AppDir/usr/bin/
-          cp -rv docs/ AppDir/usr/bin/
+          cp -rv src/ docs/ requirements.txt AppDir/usr/bin/
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin python --output appimage \
             --desktop-file shortcircuit.desktop --icon-file docs/Daytripper.png
-
-      - name: Verify AppImage Structure
-        run: |
-          chmod +x *.AppImage
-          ./*.AppImage --appimage-extract
-          find squashfs-root/usr/bin/database/ -name "*.csv"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
