@@ -70,7 +70,19 @@ class ESI:
     endpoint_auth = ESI.ENDPOINT_EVE_AUTH_FORMAT.format(
       ESI.CLIENT_CALLBACK, ESI.CLIENT_ID, scopes, self.state
     )
-    return webbrowser.open(endpoint_auth)
+
+    if __import__('sys').platform == 'linux':
+      import subprocess
+      import os
+      env = os.environ.copy()
+      env.pop("LD_LIBRARY_PATH", None)
+      try:
+        subprocess.Popen(["xdg-open", endpoint_auth], env=env)
+        return True
+      except OSError:
+        return webbrowser.open(endpoint_auth)
+    else:
+      return webbrowser.open(endpoint_auth)
 
   def timeout_server(self):
     self.httpd = None
