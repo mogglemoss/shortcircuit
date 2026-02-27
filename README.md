@@ -39,6 +39,17 @@ Short Circuit pulls live chain data directly from the most popular wormhole mapp
 
 *(Note: If you provide pre-compiled binaries, you can download the latest version from the [Releases](https://github.com/mogglemoss/shortcircuit/releases) page.)*
 
+**Launching an Unsigned macOS App (Gatekeeper Bypass):**
+To launch an unsigned Mac app for the first time, you'll need to bypass Apple's Gatekeeper security feature. Choose one of the following methods:
+
+1.  **Right-Click Open:** Right-click (or Control-click) the application icon in Finder, select **Open**, and then click **Open Anyway** in the subsequent dialog box.
+2.  **System Settings:** Go to `System Settings` > `Privacy & Security` and scroll down to the "Security" section. You should see an option to "Open Anyway" for the recently blocked application. Click it to launch.
+3.  **Terminal (Advanced):** For stubborn apps that won't open via the above methods, you can remove the quarantine flag using the Terminal. Replace `"/path/to/YourApp.app"` with the actual path to your application.
+
+    ```bash
+    xattr -r -d com.apple.quarantine "/path/to/YourApp.app"
+    ```
+
 **Running from Source:**
 Make sure you have Python 3 installed, then clone the repository and install the dependencies:
 
