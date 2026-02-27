@@ -166,9 +166,6 @@ def build(sde_only=False):
         else:
             print("[WARNING] app.ico not found in src/resources/. No icon will be set for Windows.")
 
-    # Target Universal2 on macOS to support both Intel and Apple Silicon
-    if sys.platform == 'darwin':
-        pyi_args.append('--target-arch=universal2')
 
     for hidden in hidden_imports:
         pyi_args.append(f'--hidden-import={hidden}')
