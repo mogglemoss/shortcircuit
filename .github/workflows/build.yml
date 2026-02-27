@@ -112,12 +112,14 @@ jobs:
 
       - name: Download linuxdeploy and plugins
         run: |
-          curl -fL -o linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          curl -fL -o linuxdeploy-plugin-python-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-python/releases/download/continuous/linuxdeploy-plugin-python-x86_64.AppImage
-          curl -fL -o appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          gh release download continuous --repo linuxdeploy/linuxdeploy --pattern 'linuxdeploy-x86_64.AppImage'
+          gh release download continuous --repo linuxdeploy/linuxdeploy-plugin-python --pattern 'linuxdeploy-plugin-python-x86_64.AppImage'
+          gh release download continuous --repo AppImage/AppImageKit --pattern 'appimagetool-x86_64.AppImage'
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-python-x86_64.AppImage appimagetool-x86_64.AppImage
           sudo mv linuxdeploy-plugin-python-x86_64.AppImage /usr/local/bin/linuxdeploy-plugin-python
           sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build AppImage
         env:
