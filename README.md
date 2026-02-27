@@ -22,7 +22,7 @@ Whether you're running logistics, hunting targets, or just daytripping in J-Spac
   * Copy your route in a simplified text format perfect for fleet chat (`Jita --> ... --> Iyen-Oursta [HVE-768] ~~> J153528`).
   * Copy the full, detailed instruction table with a single click.
 
-## 📡 Enhanced Integrations (v2.1.5)
+## 📡 Enhanced Integrations (v2.1.7)
 
 * **Multi-Source Aggregation**: Simultaneously connect to multiple mapping tools. Aggregate data from your corp's Tripwire, and your personal Wanderer map all at once.
 * **Multi-Account Support**: Add as many sources as you need, even from the same provider. You can now connect to multiple different Tripwire servers or Wanderer maps simultaneously.
