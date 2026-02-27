@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
   build:
     name: Desktop Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -42,8 +46,8 @@ jobs:
         else
           VERSION="dev-${GITHUB_SHA::8}"
         fi
-        echo "VERSION = '$VERSION'" > version.py
-        echo "Version set to $VERSION in version.py"
+        echo "VERSION = '$VERSION'" > src/version.py
+        echo "Version set to $VERSION in src/version.py"
 
     - name: Build Application
       run: python build.py
@@ -70,7 +74,7 @@ jobs:
 
   build-linux:
     name: Linux AppImage Build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -100,8 +104,8 @@ jobs:
           else
             VERSION="dev-${GITHUB_SHA::8}"
           fi
-          echo "VERSION = '$VERSION'" > version.py
-          echo "Version set to $VERSION in version.py"
+          echo "VERSION = '$VERSION'" > src/version.py
+          echo "Version set to $VERSION in src/version.py"
 
       - name: Download SDE
         run: python build.py --sde-only
@@ -123,13 +127,13 @@ jobs:
           cat > shortcircuit.desktop <<EOF
           [Desktop Entry]
           Name=Short Circuit
-          Exec=python3 main.py
+          Exec=python3 src/main.py
           Icon=shortcircuit
           Type=Application
           Categories=Utility;
           EOF
           mkdir -p AppDir/usr/bin
-          cp -rv main.py version.py src/ docs/ requirements.txt AppDir/usr/bin/
+          cp -rv src/ docs/ requirements.txt AppDir/usr/bin/
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin python --output appimage \
             --desktop-file shortcircuit.desktop --icon-file docs/Daytripper.png
 
