@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -48,17 +48,12 @@ jobs:
       if: runner.os == 'Windows'
       run: Compress-Archive -Path "dist\Short Circuit" -DestinationPath "dist\ShortCircuit-Windows.zip"
 
-    - name: Package (Linux)
-      if: runner.os == 'Linux'
-      run: tar -czvf dist/ShortCircuit-Linux.tar.gz -C dist "Short Circuit"
-
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ShortCircuit-${{ matrix.os }}
         path: |
           dist/*.zip
-          dist/*.tar.gz
           dist/*.dmg
 
   release:
