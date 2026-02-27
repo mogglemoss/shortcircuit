@@ -107,36 +107,43 @@ jobs:
           echo "VERSION = '$VERSION'" > src/version.py
           echo "Version set to $VERSION in src/version.py"
 
-      - name: Download SDE
-        run: python build.py --sde-only
+      - name: Build Application
+        run: python build.py
 
-      - name: Download linuxdeploy and plugins
+      - name: Download appimagetool
         run: |
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-python/releases/download/continuous/linuxdeploy-plugin-python-x86_64.AppImage
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-python-x86_64.AppImage appimagetool-x86_64.AppImage
-          sudo mv linuxdeploy-plugin-python-x86_64.AppImage /usr/local/bin/linuxdeploy-plugin-python
+          chmod +x appimagetool-x86_64.AppImage
           sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
 
       - name: Build AppImage
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
-          PYTHON_VERSION: '3.10'
-          DEPLOY_REQUIREMENTS_FILE: 'requirements.txt'
         run: |
-          cat > shortcircuit.desktop <<EOF
+          # Create AppDir structure
+          mkdir -p AppDir
+          
+          # Copy PyInstaller built directory into AppDir
+          cp -r "dist/Short Circuit/"* AppDir/
+          
+          # Create the desktop file
+          cat > AppDir/shortcircuit.desktop <<EOF
           [Desktop Entry]
           Name=Short Circuit
-          Exec=python3 src/main.py
+          Exec=ShortCircuit
           Icon=shortcircuit
           Type=Application
           Categories=Utility;
           EOF
-          mkdir -p AppDir/usr/bin
-          cp -rv src/ docs/ requirements.txt AppDir/usr/bin/
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin python --output appimage \
-            --desktop-file shortcircuit.desktop --icon-file docs/Daytripper.png
+          
+          # Copy the icon
+          cp docs/Daytripper.png AppDir/shortcircuit.png
+          
+          # Create the AppRun symlink pointing to the executable
+          ln -s ShortCircuit AppDir/AppRun
+          
+          # Build the AppImage
+          appimagetool AppDir "ShortCircuit-x86_64.AppImage"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
