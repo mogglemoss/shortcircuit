@@ -34,11 +34,12 @@ def check_dependencies():
         print(f"\nPlease install them using:\n  {install_cmd}\n")
         sys.exit(1)
 
-def build():
-    # Import PyInstaller here to avoid crash if not installed (handled by check_dependencies)
-    import PyInstaller.__main__
-    from PyInstaller.utils.hooks import collect_submodules
-
+def build(sde_only=False):
+    if not sde_only:
+        # Import PyInstaller here to avoid crash if not installed
+        import PyInstaller.__main__
+        from PyInstaller.utils.hooks import collect_submodules
+        
     # Get the absolute path to the project root
     # We assume this script is located in the project root
     project_root = os.path.abspath(os.path.dirname(__file__))
@@ -56,7 +57,8 @@ def build():
     app_name_final = "Short Circuit"
 
     # 0. Check dependencies
-    check_dependencies()
+    if not sde_only:
+        check_dependencies()
 
     # 1. Check and download SDE files
     required_sde = [
@@ -83,6 +85,10 @@ def build():
             except Exception as e:
                 print(f"[ERROR] Failed to download {sde}: {e}")
                 sys.exit(1)
+
+    if sde_only:
+        print("SDE download complete. Skipping PyInstaller build.")
+        return
 
     # 3. Clean previous builds
     dist_dir = os.path.join(project_root, 'dist')
@@ -225,4 +231,5 @@ def build():
     print(f"Build complete! Executable is in dist/Short Circuit/")
 
 if __name__ == "__main__":
-    build()
+    sde_only = "--sde-only" in sys.argv
+    build(sde_only)
