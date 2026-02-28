@@ -46,8 +46,8 @@ jobs:
         else
           VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
         fi
-        # Use sed to directly update __version__ in __init__.py
-        sed -i "" -e "s/__version__ = '.*'/__version__ = '$VERSION'/" src/shortcircuit/__init__.py
+        # Update __version__ in __init__.py using python for cross-platform compatibility
+        python -c "import re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{VERSION}'\", c))"
         echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
     - name: Build Application
@@ -105,8 +105,8 @@ jobs:
           else
             VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
           fi
-          # Use sed to directly update __version__ in __init__.py
-          sed -i "" -e "s/__version__ = '.*'/__version__ = '$VERSION'/" src/shortcircuit/__init__.py
+          # Update __version__ in __init__.py using python for cross-platform compatibility
+          python -c "import re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{VERSION}'\", c))"
           echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
       - name: Build Application
