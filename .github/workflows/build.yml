@@ -44,10 +44,11 @@ jobs:
           VERSION_TAG=${{ github.ref_name }}
           VERSION=${VERSION_TAG#v}
         else
-          VERSION="dev-${GITHUB_SHA::8}"
+          VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
         fi
-        echo "VERSION = '$VERSION'" > src/version.py
-        echo "Version set to $VERSION in src/version.py"
+        # Use sed to directly update __version__ in __init__.py
+        sed -i "" -e "s/__version__ = '.*'/__version__ = '$VERSION'/" src/shortcircuit/__init__.py
+        echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
     - name: Build Application
       run: python build.py
@@ -102,10 +103,11 @@ jobs:
             VERSION_TAG=${{ github.ref_name }}
             VERSION=${VERSION_TAG#v}
           else
-            VERSION="dev-${GITHUB_SHA::8}"
+            VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
           fi
-          echo "VERSION = '$VERSION'" > src/version.py
-          echo "Version set to $VERSION in src/version.py"
+          # Use sed to directly update __version__ in __init__.py
+          sed -i "" -e "s/__version__ = '.*'/__version__ = '$VERSION'/" src/shortcircuit/__init__.py
+          echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
       - name: Build Application
         run: python build.py
@@ -144,12 +146,18 @@ jobs:
           
           # Build the AppImage
           appimagetool AppDir "ShortCircuit-x86_64.AppImage"
+          
+      - name: Package (Linux tar.gz)
+        run: |
+          tar -czvf "ShortCircuit-Linux-x86_64.tar.gz" -C "dist" "Short Circuit"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ShortCircuit-Linux
-          path: "*.AppImage"
+          path: | 
+            *.AppImage
+            *.tar.gz
 
   release:
     name: Create GitHub Release
