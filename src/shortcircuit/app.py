@@ -1260,7 +1260,7 @@ class MainWindow(QtWidgets.QMainWindow):
         from shortcircuit.model.utility.gui_sources import SourceConfigurationDialog
 
         dialog = SourceConfigurationDialog(self.source_manager, self)
-        dialog.sources_saved.connect(self._on_sources_saved_in_dialog)  # Connect new signal
+        dialog.sources_saved.connect(self._on_sources_saved_in_dialog)
         if not dialog.exec():
             return
 
@@ -1415,25 +1415,23 @@ class MainWindow(QtWidgets.QMainWindow):
         version_box.addButton("Remind me later", QtWidgets.QMessageBox.RejectRole)
         ret = version_box.exec()
 
-    if ret != QtWidgets.QMessageBox.AcceptRole:
-      return
+        if ret != QtWidgets.QMessageBox.AcceptRole:
+            return
 
-    url_to_open = QtCore.QUrl(
-      f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
-    )
-
-    if sys.platform == 'linux':
-      import subprocess
-      env = os.environ.copy()
-      env.pop('LD_LIBRARY_PATH', None)
-      try:
-        subprocess.Popen(['xdg-open', url_to_open.toString()], env=env)
-      except OSError:
-        webbrowser.open(url_to_open.toString())
-    else:
-      QtGui.QDesktopServices.openUrl(url_to_open)
-            )
+        url_to_open = QtCore.QUrl(
+            f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
         )
+
+        if sys.platform == 'linux':
+            import subprocess
+            env = os.environ.copy()
+            env.pop('LD_LIBRARY_PATH', None)
+            try:
+                subprocess.Popen(['xdg-open', url_to_open.toString()], env=env)
+            except OSError:
+                webbrowser.open(url_to_open.toString())
+        else:
+            QtGui.QDesktopServices.openUrl(url_to_open)
 
     # event: QCloseEvent
     def closeEvent(self, event):
