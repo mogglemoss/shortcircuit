@@ -142,6 +142,7 @@ def build(sde_only=False):
             "qdarktheme",
             "typing_extensions",
             "appdirs",
+            "PySide6.QtNetwork",
             "shortcircuit.model.wanderer",
         ]
     )

@@ -10,8 +10,26 @@ from typing import Dict, List, TypedDict, Union
 import webbrowser
 
 from appdirs import AppDirs
-from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtNetwork
 import qdarktheme
+
+from . import __appname__, __appslug__, __date__ as last_update, __version__
+import shortcircuit.resources
+from .model.esi_processor import ESIProcessor
+from .model.evedb import EveDb, Restrictions, SpaceType, WormholeSize
+from .model.solarmap import ConnectionType
+from .model.logger import Logger
+from .model.navigation import Navigation
+from .model.navprocessor import NavProcessor
+from .model.versioncheck import VersionCheck
+from .model.source_manager import SourceManager
+from .model.mapsource import SourceType
+from .model.tripwire_source import TripwireSource
+from .model.wanderer_source import WandererSource
+from .model.pathfinder_source import PathfinderSource
+from .model.evescout_source import EveScoutSource
+from .model.gui_source_toggles import SourceStatusWidget
 
 
 class StateEVEConnection(TypedDict):
@@ -65,12 +83,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        Logger.info("MainWindow init started")
         self.settings = QtCore.QSettings(
             QtCore.QSettings.IniFormat,
             QtCore.QSettings.UserScope,
             __appname__,
         )
 
+        Logger.info("Initializing SourceManager")
         self.source_manager = SourceManager()
         self.source_manager.register_source_class(SourceType.TRIPWIRE, TripwireSource)
         self.source_manager.register_source_class(SourceType.WANDERER, WandererSource)
@@ -242,11 +262,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Content
         self.label_status = QtWidgets.QLabel("")
-        self.label_status.setAlignment(QtCore.Qt.AlignCenter)
-        self.tableWidget_path = QtWidgets.QTableWidget()
-        self.tableWidget_path.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tableWidget_path.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.tableWidget_path.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.label_status.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.tableWidget_path.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.tableWidget_path.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.tableWidget_path.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.lineEdit_short_format = QtWidgets.QLineEdit()
         self.lineEdit_short_format.setReadOnly(True)
         self.lineEdit_short_format.setPlaceholderText("Short format route (click to copy)")
@@ -270,8 +295,8 @@ class MainWindow(QtWidgets.QMainWindow):
         sidebar_container.setObjectName("sidebar_container")
         sidebar_container.setWidgetResizable(True)
         sidebar_container.setFixedWidth(340)  # Account for scrollbar width
-        sidebar_container.setFrameShape(QtWidgets.QFrame.NoFrame)
-        sidebar_container.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        sidebar_container.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        sidebar_container.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         sidebar = QtWidgets.QWidget()
         sidebar.setObjectName("sidebar")
@@ -283,14 +308,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_portrait = QtWidgets.QLabel()
         self.lbl_portrait.setFixedSize(128, 128)
         self.lbl_portrait.setScaledContents(True)
-        self.lbl_portrait.setAlignment(QtCore.Qt.AlignCenter)
+        self.lbl_portrait.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.lbl_portrait.setStyleSheet("border: 1px solid #3e4451; background-color: #282c34;")
-        sidebar_layout.addWidget(self.lbl_portrait, 0, QtCore.Qt.AlignCenter)
+        sidebar_layout.addWidget(self.lbl_portrait, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Header
         lbl_header = QtWidgets.QLabel("DAYTRIPPER")
         lbl_header.setObjectName("sidebar_header")
-        lbl_header.setAlignment(QtCore.Qt.AlignCenter)
+        lbl_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         sidebar_layout.addWidget(lbl_header)
         self.lbl_header = lbl_header
 
@@ -1110,11 +1135,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.pushButton_set_dest.setEnabled(True)
 
             # Update Header with Character Name
-            if hasattr(self, "lbl_header"):
+            if hasattr(self, "lbl_header") and self.state_eve_connection["char_name"]:
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
                 self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
 
-            self._load_portrait(self.state_eve_connection["char_id"])
+            if self.state_eve_connection["char_id"]:
+                self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
@@ -1133,7 +1159,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.lbl_header.setText("DAYTRIPPER")
             self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
 
-        self._load_portrait(1)
+        QtCore.QTimer.singleShot(100, lambda: self._load_portrait(1))
 
     def on_sources_changed(self):
         self.update_auto_refresh_state()
@@ -1197,7 +1223,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
-    @QtCore.Slot(str, int)
+    @QtCore.Slot(bool, str, int)
     def login_handler(self, is_ok, char_name, char_id):
         self.state_eve_connection["connected"] = is_ok
         self.state_eve_connection["char_name"] = char_name
@@ -1461,18 +1487,27 @@ class MainWindow(QtWidgets.QMainWindow):
             QtGui.QDesktopServices.openUrl(url_to_open)
 
     def _load_portrait(self, char_id):
-        url = f"https://images.evetech.net/characters/{char_id}/portrait?size=128"
-        self.network_manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
+        try:
+            url = f"https://images.evetech.net/characters/{char_id}/portrait?size=128"
+            self.network_manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
+        except Exception as e:
+            Logger.error(f"Error initiating portrait load: {e}")
 
     def _on_portrait_loaded(self, reply):
-        if reply.error() == QtNetwork.QNetworkReply.NoError:
-            data = reply.readAll()
-            pixmap = QtGui.QPixmap()
-            pixmap.loadFromData(data)
-            self.lbl_portrait.setPixmap(pixmap)
-        else:
-            Logger.error(f"Failed to load portrait: {reply.errorString()}")
-        reply.deleteLater()
+        try:
+            if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
+                data = reply.readAll()
+                pixmap = QtGui.QPixmap()
+                if pixmap.loadFromData(data):
+                    self.lbl_portrait.setPixmap(pixmap)
+                else:
+                    Logger.error("Failed to load pixmap from portrait data")
+            else:
+                Logger.error(f"Failed to load portrait: {reply.errorString()}")
+        except Exception as e:
+            Logger.error(f"Exception in _on_portrait_loaded: {e}")
+        finally:
+            reply.deleteLater()
 
     # event: QCloseEvent
     def closeEvent(self, event):
@@ -1525,12 +1560,26 @@ def run():
         QtGui.QDesktopServices.openUrl = open_url_linux
 
     if hasattr(qdarktheme, "setup_theme"):
-        qdarktheme.setup_theme()
+        try:
+            qdarktheme.setup_theme()
+        except Exception:
+            pass
     elif hasattr(qdarktheme, "load_stylesheet"):
-        appl.setStyleSheet(qdarktheme.load_stylesheet())
-    form = MainWindow()
-    form.show()
-    appl.exec()
+        try:
+            appl.setStyleSheet(qdarktheme.load_stylesheet())
+        except Exception:
+            pass
+
+    try:
+        form = MainWindow()
+        form.show()
+        appl.exec()
+    except Exception as e:
+        # Fallback to simple message box if possible, but at least log it
+        print(f"FATAL ERROR during startup: {e}")
+        import traceback
+
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

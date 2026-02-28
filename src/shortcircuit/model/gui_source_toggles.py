@@ -31,11 +31,11 @@ class SourceStatusWidget(QtWidgets.QPushButton):
 
     def _create_status_icon(self, color_name):
         pixmap = QtGui.QPixmap(16, 16)
-        pixmap.fill(QtCore.Qt.transparent)
+        pixmap.fill(QtCore.Qt.GlobalColor.transparent)
         painter = QtGui.QPainter(pixmap)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setBrush(QtGui.QColor(color_name))
-        painter.setPen(QtCore.Qt.NoPen)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.drawEllipse(4, 4, 8, 8)
         painter.end()
         return QtGui.QIcon(pixmap)
