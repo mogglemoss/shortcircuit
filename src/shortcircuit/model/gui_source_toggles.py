@@ -16,6 +16,11 @@ class SourceStatusWidget(QtWidgets.QPushButton):
         self.sm = SourceManager()
         self.setFlat(True)
 
+        # Pre-create icons
+        self.icon_active = self._create_status_icon("#98c379")  # Green
+        self.icon_inactive = self._create_status_icon("#dcdcdc")  # White/Gray
+        self.icon_error = self._create_status_icon("#e06c75")  # Red
+
         # Create the menu
         self._status_menu = QtWidgets.QMenu(self)
         self.setMenu(self._status_menu)
@@ -23,6 +28,17 @@ class SourceStatusWidget(QtWidgets.QPushButton):
         # Update menu whenever sources change (added/removed/toggled)
         self.sm.sources_changed.connect(self.refresh_menu)
         self.refresh_menu()
+
+    def _create_status_icon(self, color_name):
+        pixmap = QtGui.QPixmap(16, 16)
+        pixmap.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(pixmap)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setBrush(QtGui.QColor(color_name))
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawEllipse(4, 4, 8, 8)
+        painter.end()
+        return QtGui.QIcon(pixmap)
 
     def refresh_menu(self):
         self._status_menu.clear()
@@ -50,6 +66,15 @@ class SourceStatusWidget(QtWidgets.QPushButton):
                 title += f" [{time_str}]"
 
             source_menu = QtWidgets.QMenu(title, self._status_menu)
+
+            # Set icon for the sub-menu based on status
+            if not source.enabled:
+                source_menu.setIcon(self.icon_inactive)
+            elif not source.status_ok:
+                source_menu.setIcon(self.icon_error)
+            else:
+                source_menu.setIcon(self.icon_active)
+
             self._status_menu.addMenu(source_menu)
 
             # Enable/Disable action

@@ -76,7 +76,6 @@ class SourceConfigurationDialog(QtWidgets.QDialog):
         )
         button_box.button(QtWidgets.QDialogButtonBox.Save).clicked.connect(self._save_only)
         button_box.rejected.connect(self.reject)
-        button_box.accepted.connect(super().accept)  # Only close on Cancel/X
         main_layout.addWidget(button_box)
 
         # Populate list

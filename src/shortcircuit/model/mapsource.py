@@ -4,11 +4,13 @@ from enum import Enum
 from typing import Dict, Any, Tuple
 from shortcircuit.model.solarmap import SolarMap
 
+
 class SourceType(str, Enum):
     TRIPWIRE = "tripwire"
     WANDERER = "wanderer"
     PATHFINDER = "pathfinder"
     EVESCOUT = "evescout"
+
 
 class MapSource(ABC):
     def __init__(self, id: str = None, name: str = "", enabled: bool = True):
@@ -16,6 +18,7 @@ class MapSource(ABC):
         self._name = name
         self.enabled = enabled
         self.last_updated = None
+        self.status_ok = True
 
     @property
     def name(self):
@@ -52,6 +55,6 @@ class MapSource(ABC):
 
     @classmethod
     @abstractmethod
-    def from_json(cls, data: Dict[str, Any]) -> 'MapSource':
+    def from_json(cls, data: Dict[str, Any]) -> "MapSource":
         """Deserialize source config from dict."""
         pass

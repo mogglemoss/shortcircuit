@@ -9,9 +9,11 @@ from shortcircuit.model.utility.configuration import Configuration
 from shortcircuit.model.logger import Logger
 from shortcircuit.model.utility.singleton import Singleton
 
+
 # Combined metaclass to avoid conflict with QObject's metaclass
 class SingletonQObject(type(QtCore.QObject), Singleton):
     pass
+
 
 class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
     sources_changed = QtCore.Signal()
@@ -51,10 +53,14 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
                 results[source.name] = count
                 if count >= 0:
                     source.last_updated = datetime.now()
+                    source.status_ok = True
+                else:
+                    source.status_ok = False
             except Exception as e:
                 Logger.error(f"Error fetching data from source {source.name}: {e}")
                 results[source.name] = -1
-        
+                source.status_ok = False
+
         # Mark graph as dirty so it gets rebuilt on next query
         solar_map._graph_dirty = True
         self.sources_changed.emit()
@@ -72,10 +78,14 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
                 results[source.name] = count
                 if count >= 0:
                     source.last_updated = datetime.now()
+                    source.status_ok = True
+                else:
+                    source.status_ok = False
             except Exception as e:
                 Logger.error(f"Error fetching data from source {source.name}: {e}")
                 results[source.name] = -1
-        
+                source.status_ok = False
+
         solar_map._graph_dirty = True
         self.sources_changed.emit()
         return results
@@ -83,7 +93,7 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
     def load_configuration(self):
         self.sources = []
         settings = Configuration.settings
-        
+
         # Check for new format first
         json_data = settings.value("MapSources")
         if json_data:
@@ -93,7 +103,7 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
                     source_type_str = data.get("type")
                     if not source_type_str:
                         continue
-                        
+
                     source_type = SourceType(source_type_str)
                     if source_type in self._registry:
                         source_class = self._registry[source_type]
@@ -111,7 +121,7 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
     def _migrate_legacy_configuration(self):
         settings = Configuration.settings
         migrated = False
-        
+
         # Legacy Tripwire (Flat)
         tw_url = settings.value("tripwire_url", "")
         tw_user = settings.value("tripwire_user", "")
@@ -119,7 +129,9 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
         if tw_url and tw_user and SourceType.TRIPWIRE in self._registry:
             source_class = self._registry[SourceType.TRIPWIRE]
             Logger.info("Migrating legacy Tripwire configuration (flat).")
-            self.sources.append(source_class(name="Legacy Tripwire", url=tw_url, username=tw_user, password=tw_pass))
+            self.sources.append(
+                source_class(name="Legacy Tripwire", url=tw_url, username=tw_user, password=tw_pass)
+            )
             migrated = True
             settings.remove("tripwire_url")
             settings.remove("tripwire_user")
@@ -132,34 +144,49 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
         if tw_url and tw_user and SourceType.TRIPWIRE in self._registry:
             source_class = self._registry[SourceType.TRIPWIRE]
             Logger.info("Migrating legacy Tripwire configuration (grouped).")
-            self.sources.append(source_class(name="Legacy Tripwire (Alt)", url=tw_url, username=tw_user, password=tw_pass))
+            self.sources.append(
+                source_class(
+                    name="Legacy Tripwire (Alt)", url=tw_url, username=tw_user, password=tw_pass
+                )
+            )
             migrated = True
             settings.remove("Tripwire/url")
             settings.remove("Tripwire/username")
             settings.remove("Tripwire/password")
-            
+
         # Legacy Wanderer
         wand_map = settings.value("Wanderer/map_id", "")
         wand_token = settings.value("Wanderer/token", "")
         if wand_map and wand_token and SourceType.WANDERER in self._registry:
             source_class = self._registry[SourceType.WANDERER]
-            
+
             # Flat URL
             wand_url = settings.value("wanderer_url", "")
             if wand_url:
                 Logger.info("Migrating legacy Wanderer configuration (flat).")
-                self.sources.append(source_class(name="Legacy Wanderer", url=wand_url, map_id=wand_map, token=wand_token))
+                self.sources.append(
+                    source_class(
+                        name="Legacy Wanderer", url=wand_url, map_id=wand_map, token=wand_token
+                    )
+                )
                 migrated = True
                 settings.remove("wanderer_url")
-            
+
             # Grouped URL
             wand_url = settings.value("Wanderer/url", "")
             if wand_url:
                 Logger.info("Migrating legacy Wanderer configuration (grouped).")
-                self.sources.append(source_class(name="Legacy Wanderer (Alt)", url=wand_url, map_id=wand_map, token=wand_token))
+                self.sources.append(
+                    source_class(
+                        name="Legacy Wanderer (Alt)",
+                        url=wand_url,
+                        map_id=wand_map,
+                        token=wand_token,
+                    )
+                )
                 migrated = True
                 settings.remove("Wanderer/url")
-                
+
             if migrated:
                 settings.remove("Wanderer/map_id")
                 settings.remove("Wanderer/token")
@@ -170,7 +197,12 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
             if es_enabled.lower() == "true" and SourceType.EVESCOUT in self._registry:
                 source_class = self._registry[SourceType.EVESCOUT]
                 Logger.info(f"Migrating legacy EveScout configuration ({es_key}).")
-                self.sources.append(source_class(name="Eve Scout" if es_key == "eve_scout_enable" else "Eve Scout (Alt)", enabled=True))
+                self.sources.append(
+                    source_class(
+                        name="Eve Scout" if es_key == "eve_scout_enable" else "Eve Scout (Alt)",
+                        enabled=True,
+                    )
+                )
                 migrated = True
                 settings.remove(es_key)
 
@@ -182,12 +214,16 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
                 source_class = self._registry[SourceType.PATHFINDER]
                 Logger.info("Migrating legacy Pathfinder configuration.")
                 pf_enabled = settings.value("Pathfinder/enabled", "false").lower() == "true"
-                self.sources.append(source_class(name="Legacy Pathfinder", url=pf_url, token=pf_token, enabled=pf_enabled))
+                self.sources.append(
+                    source_class(
+                        name="Legacy Pathfinder", url=pf_url, token=pf_token, enabled=pf_enabled
+                    )
+                )
                 migrated = True
                 settings.remove("Pathfinder/url")
                 settings.remove("Pathfinder/token")
                 settings.remove("Pathfinder/enabled")
-            
+
         if migrated:
             self.save_configuration()
 
