@@ -1161,12 +1161,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if has_errors:
             self.status_sources_widget.setText(
-                f"Sources: {active_count} Active ({total_connections} conn) - ERRORS"
+                f"Wormhole Sources: {active_count} Active ({total_connections} conn) - ERRORS"
             )
             self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
         else:
             self.status_sources_widget.setText(
-                f"Sources: {active_count} Active ({total_connections} conn)"
+                f"Wormhole Sources: {active_count} Active ({total_connections} conn)"
             )
             if active_count > 0:
                 self.status_sources_widget.setStyleSheet("color: #98c379;")
@@ -1260,9 +1260,12 @@ class MainWindow(QtWidgets.QMainWindow):
         from shortcircuit.model.utility.gui_sources import SourceConfigurationDialog
 
         dialog = SourceConfigurationDialog(self.source_manager, self)
+        dialog.sources_saved.connect(self._on_sources_saved_in_dialog)  # Connect new signal
         if not dialog.exec():
             return
 
+    @QtCore.Slot()
+    def _on_sources_saved_in_dialog(self):
         self.nav.setup_mappers()
         self.update_auto_refresh_state()
         self.on_sources_changed()
@@ -1296,7 +1299,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.worker_thread.start()
         else:
             self._update_sources_status()
-            self._message_box("Map Sources", "Update process is already running.")
+            self._message_box("Wormhole Sources", "Update process is already running.")
 
     @QtCore.Slot()
     def auto_refresh_triggered(self):
@@ -1412,14 +1415,23 @@ class MainWindow(QtWidgets.QMainWindow):
         version_box.addButton("Remind me later", QtWidgets.QMessageBox.RejectRole)
         ret = version_box.exec()
 
-        if ret != QtWidgets.QMessageBox.AcceptRole:
-            return
+    if ret != QtWidgets.QMessageBox.AcceptRole:
+      return
 
-        QtGui.QDesktopServices.openUrl(
-            QtCore.QUrl(
-                "https://github.com/mogglemoss/shortcircuit/releases/tag/{}".format(
-                    latest["tag_name"]
-                )
+    url_to_open = QtCore.QUrl(
+      f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
+    )
+
+    if sys.platform == 'linux':
+      import subprocess
+      env = os.environ.copy()
+      env.pop('LD_LIBRARY_PATH', None)
+      try:
+        subprocess.Popen(['xdg-open', url_to_open.toString()], env=env)
+      except OSError:
+        webbrowser.open(url_to_open.toString())
+    else:
+      QtGui.QDesktopServices.openUrl(url_to_open)
             )
         )
 
