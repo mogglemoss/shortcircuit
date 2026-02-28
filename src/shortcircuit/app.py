@@ -10,8 +10,7 @@ from typing import Dict, List, TypedDict, Union
 import webbrowser
 
 from appdirs import AppDirs
-from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6 import QtNetwork
+from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
 import qdarktheme
 
 from . import __appname__, __appslug__, __date__ as last_update, __version__
@@ -83,14 +82,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        Logger.info("MainWindow init started")
         self.settings = QtCore.QSettings(
             QtCore.QSettings.IniFormat,
             QtCore.QSettings.UserScope,
             __appname__,
         )
 
-        Logger.info("Initializing SourceManager")
         self.source_manager = SourceManager()
         self.source_manager.register_source_class(SourceType.TRIPWIRE, TripwireSource)
         self.source_manager.register_source_class(SourceType.WANDERER, WandererSource)
@@ -262,16 +259,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Content
         self.label_status = QtWidgets.QLabel("")
-        self.label_status.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget_path.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.tableWidget_path.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self.tableWidget_path.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        self.label_status.setAlignment(QtCore.Qt.AlignCenter)
+        self.tableWidget_path = QtWidgets.QTableWidget()
+        self.tableWidget_path.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tableWidget_path.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.tableWidget_path.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.lineEdit_short_format = QtWidgets.QLineEdit()
         self.lineEdit_short_format.setReadOnly(True)
         self.lineEdit_short_format.setPlaceholderText("Short format route (click to copy)")
@@ -498,24 +490,20 @@ class MainWindow(QtWidgets.QMainWindow):
     QMenu {
         background-color: #21252b;
         border: 1px solid #3e4451;
-        padding: 4px;
+        color: #dcdcdc;
     }
     QMenu::item {
-        padding: 6px 30px 6px 20px;
-        color: #dcdcdc;
-        background: transparent;
+        padding: 5px 25px 5px 20px;
+        border: 1px solid transparent;
     }
     QMenu::item:selected {
         background-color: #3e4451;
-        color: #ffffff;
-    }
-    QMenu::item:disabled {
-        color: #5c6370;
+        border-color: #00aaff;
     }
     QMenu::separator {
         height: 1px;
         background: #3e4451;
-        margin: 4px 8px;
+        margin: 5px 10px;
     }
     """
         self.setStyleSheet(style)
@@ -1139,8 +1127,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
                 self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
 
-            if self.state_eve_connection["char_id"]:
-                self._load_portrait(self.state_eve_connection["char_id"])
+            self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
@@ -1159,7 +1146,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.lbl_header.setText("DAYTRIPPER")
             self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
 
-        QtCore.QTimer.singleShot(100, lambda: self._load_portrait(1))
+        self._load_portrait(1)
 
     def on_sources_changed(self):
         self.update_auto_refresh_state()
@@ -1487,27 +1474,18 @@ class MainWindow(QtWidgets.QMainWindow):
             QtGui.QDesktopServices.openUrl(url_to_open)
 
     def _load_portrait(self, char_id):
-        try:
-            url = f"https://images.evetech.net/characters/{char_id}/portrait?size=128"
-            self.network_manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
-        except Exception as e:
-            Logger.error(f"Error initiating portrait load: {e}")
+        url = f"https://images.evetech.net/characters/{char_id}/portrait?size=128"
+        self.network_manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
 
     def _on_portrait_loaded(self, reply):
-        try:
-            if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
-                data = reply.readAll()
-                pixmap = QtGui.QPixmap()
-                if pixmap.loadFromData(data):
-                    self.lbl_portrait.setPixmap(pixmap)
-                else:
-                    Logger.error("Failed to load pixmap from portrait data")
-            else:
-                Logger.error(f"Failed to load portrait: {reply.errorString()}")
-        except Exception as e:
-            Logger.error(f"Exception in _on_portrait_loaded: {e}")
-        finally:
-            reply.deleteLater()
+        if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
+            data = reply.readAll()
+            pixmap = QtGui.QPixmap()
+            pixmap.loadFromData(data)
+            self.lbl_portrait.setPixmap(pixmap)
+        else:
+            Logger.error(f"Failed to load portrait: {reply.errorString()}")
+        reply.deleteLater()
 
     # event: QCloseEvent
     def closeEvent(self, event):
@@ -1560,26 +1538,12 @@ def run():
         QtGui.QDesktopServices.openUrl = open_url_linux
 
     if hasattr(qdarktheme, "setup_theme"):
-        try:
-            qdarktheme.setup_theme()
-        except Exception:
-            pass
+        qdarktheme.setup_theme()
     elif hasattr(qdarktheme, "load_stylesheet"):
-        try:
-            appl.setStyleSheet(qdarktheme.load_stylesheet())
-        except Exception:
-            pass
-
-    try:
-        form = MainWindow()
-        form.show()
-        appl.exec()
-    except Exception as e:
-        # Fallback to simple message box if possible, but at least log it
-        print(f"FATAL ERROR during startup: {e}")
-        import traceback
-
-        traceback.print_exc()
+        appl.setStyleSheet(qdarktheme.load_stylesheet())
+    form = MainWindow()
+    form.show()
+    appl.exec()
 
 
 if __name__ == "__main__":

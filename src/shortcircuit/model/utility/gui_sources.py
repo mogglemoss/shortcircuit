@@ -71,20 +71,12 @@ class SourceConfigurationDialog(QtWidgets.QDialog):
         splitter.setSizes([200, 500])
 
         # Bottom buttons
-        btn_layout = QtWidgets.QHBoxLayout()
-        btn_layout.addStretch()
-
-        self.btn_save = QtWidgets.QPushButton("Save")
-        self.btn_save.setFixedWidth(100)
-        self.btn_save.clicked.connect(self._save_only)
-        btn_layout.addWidget(self.btn_save)
-
-        self.btn_close = QtWidgets.QPushButton("Close")
-        self.btn_close.setFixedWidth(100)
-        self.btn_close.clicked.connect(self.accept)
-        btn_layout.addWidget(self.btn_close)
-
-        main_layout.addLayout(btn_layout)
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
+        )
+        button_box.button(QtWidgets.QDialogButtonBox.Save).clicked.connect(self._save_only)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
 
         # Populate list
         self._populate_list()

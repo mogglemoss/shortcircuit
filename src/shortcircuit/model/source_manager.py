@@ -104,12 +104,7 @@ class SourceManager(QtCore.QObject, metaclass=SingletonQObject):
                     if not source_type_str:
                         continue
 
-                    try:
-                        source_type = SourceType(source_type_str)
-                    except ValueError:
-                        Logger.error(f"Unknown source type in config: {source_type_str}")
-                        continue
-
+                    source_type = SourceType(source_type_str)
                     if source_type in self._registry:
                         source_class = self._registry[source_type]
                         source = source_class.from_json(data)

@@ -7,51 +7,50 @@ from .esi.esi import ESI
 
 
 class ESIProcessor(QtCore.QObject):
-    """
-    ESI Middleware
-    """
+  """
+  ESI Middleware
+  """
+  login_response = QtCore.Signal(bool, str)
+  logout_response = QtCore.Signal()
+  location_response = QtCore.Signal(str)
+  destination_response = QtCore.Signal(bool)
 
-    login_response = QtCore.Signal(bool, str, int)
-    logout_response = QtCore.Signal()
-    location_response = QtCore.Signal(str)
-    destination_response = QtCore.Signal(bool)
+  def __init__(self, parent=None):
+    super().__init__(parent)
+    self.esi = ESI(self._login_callback, self._logout_callback)
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.esi = ESI(self._login_callback, self._logout_callback)
+  def login(self):
+    return self.esi.start_server()
 
-    def login(self):
-        return self.esi.start_server()
+  def logout(self):
+    self.esi.logout()
 
-    def logout(self):
-        self.esi.logout()
+  def get_location(self):
+    server_thread = threading.Thread(target=self._get_location)
+    server_thread.daemon = True
+    server_thread.start()
 
-    def get_location(self):
-        server_thread = threading.Thread(target=self._get_location)
-        server_thread.daemon = True
-        server_thread.start()
+  def _get_location(self):
+    location = self.esi.get_char_location()
+    self.location_response.emit(location)
 
-    def _get_location(self):
-        location = self.esi.get_char_location()
-        self.location_response.emit(location)
+  # TODO properly type this
+  def set_destination(self, sys_id):
+    server_thread = threading.Thread(
+      target=self._set_destination,
+      args=(sys_id, ),
+    )
+    server_thread.daemon = True
+    server_thread.start()
 
-    # TODO properly type this
-    def set_destination(self, sys_id):
-        server_thread = threading.Thread(
-            target=self._set_destination,
-            args=(sys_id,),
-        )
-        server_thread.daemon = True
-        server_thread.start()
+  # TODO properly type this
+  def _set_destination(self, sys_id):
+    response = self.esi.set_char_destination(sys_id)
+    self.destination_response.emit(response)
 
-    # TODO properly type this
-    def _set_destination(self, sys_id):
-        response = self.esi.set_char_destination(sys_id)
-        self.destination_response.emit(response)
+  # TODO properly type this
+  def _login_callback(self, is_ok, char_name):
+    self.login_response.emit(is_ok, char_name)
 
-    # TODO properly type this
-    def _login_callback(self, is_ok, char_name, char_id):
-        self.login_response.emit(is_ok, char_name, char_id)
-
-    def _logout_callback(self):
-        self.logout_response.emit()
+  def _logout_callback(self):
+    self.logout_response.emit()

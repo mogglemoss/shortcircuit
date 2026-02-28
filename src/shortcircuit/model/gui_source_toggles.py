@@ -31,11 +31,11 @@ class SourceStatusWidget(QtWidgets.QPushButton):
 
     def _create_status_icon(self, color_name):
         pixmap = QtGui.QPixmap(16, 16)
-        pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+        pixmap.fill(QtCore.Qt.transparent)
         painter = QtGui.QPainter(pixmap)
-        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.setBrush(QtGui.QColor(color_name))
-        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setPen(QtCore.Qt.NoPen)
         painter.drawEllipse(4, 4, 8, 8)
         painter.end()
         return QtGui.QIcon(pixmap)
@@ -53,11 +53,7 @@ class SourceStatusWidget(QtWidgets.QPushButton):
 
         for source in sources:
             # Create a sub-menu for each source
-            status_emoji = "🟢" if source.enabled and source.status_ok else "⚪"
-            if source.enabled and not source.status_ok:
-                status_emoji = "🔴"
-
-            title = f"{status_emoji} {source.name} ({source.type.value})"
+            title = f"{source.name} ({source.type.value})"
             if source.last_updated:
                 delta = now - source.last_updated
                 secs = int(delta.total_seconds())
