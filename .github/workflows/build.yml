@@ -47,7 +47,7 @@ jobs:
           VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
         fi
         # Update __version__ in __init__.py using python for cross-platform compatibility
-        python -c "import re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{VERSION}'\", c))"
+        VERSION="$VERSION" python -c "import os, re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{os.environ.get('VERSION')}'\", c))"
         echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
     - name: Build Application
@@ -106,7 +106,7 @@ jobs:
             VERSION="2.1.0-dev-${GITHUB_SHA::8}" # Default or non-tag build version
           fi
           # Update __version__ in __init__.py using python for cross-platform compatibility
-          python -c "import re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{VERSION}'\", c))"
+          VERSION="$VERSION" python -c "import os, re; f='src/shortcircuit/__init__.py'; c=open(f).read(); open(f,'w').write(re.sub(r\"__version__ = '.*'\", f\"__version__ = '{os.environ.get('VERSION')}'\", c))"
           echo "Version set to $VERSION in src/shortcircuit/__init__.py"
 
       - name: Build Application
