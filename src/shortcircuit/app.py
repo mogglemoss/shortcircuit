@@ -1211,11 +1211,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
     @QtCore.Slot(bool, str, int)
-    def login_handler(self, is_ok, char_name, char_id):
+    def login_handler(self, is_ok, char_name=None, char_id=0):
+        # Handle cases where PySide might mangle the argument list across threads
+        if isinstance(char_name, int) and char_id == 0:
+            char_id = char_name
+            char_name = "Unknown"
+            
         self.state_eve_connection["connected"] = is_ok
         self.state_eve_connection["char_name"] = char_name
         self.state_eve_connection["char_id"] = char_id if is_ok else 0
         self.state_eve_connection["error"] = "ESI error" if not is_ok else None
+        
+        Logger.info(f"Login handler received: ok={is_ok}, name={char_name}, id={char_id}")
         self._status_eve_connection_update()
 
     @QtCore.Slot()
