@@ -2,34 +2,36 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from datetime import datetime
 from shortcircuit.model.source_manager import SourceManager
 
+
 class SourceStatusWidget(QtWidgets.QPushButton):
     """
     A status bar widget that allows quick toggling of map sources.
     """
+
     manage_requested = QtCore.Signal()
     refresh_requested = QtCore.Signal(str)
 
     def __init__(self, parent=None):
-        super().__init__("Map Sources", parent)
+        super().__init__("Wormhole Status", parent)
         self.sm = SourceManager()
         self.setFlat(True)
-        
+
         # Create the menu
-        self.menu = QtWidgets.QMenu(self)
-        self.setMenu(self.menu)
-        
+        self._status_menu = QtWidgets.QMenu(self)
+        self.setMenu(self._status_menu)
+
         # Update menu whenever sources change (added/removed/toggled)
         self.sm.sources_changed.connect(self.refresh_menu)
         self.refresh_menu()
 
     def refresh_menu(self):
-        self.menu.clear()
+        self._status_menu.clear()
         sources = self.sm.get_sources()
-        
+
         now = datetime.now()
 
         if not sources:
-            action = self.menu.addAction("No sources configured")
+            action = self._status_menu.addAction("No sources configured")
             action.setEnabled(False)
             return
 
@@ -47,28 +49,30 @@ class SourceStatusWidget(QtWidgets.QPushButton):
                     time_str = f"{secs // 3600}h {(secs % 3600) // 60}m ago"
                 title += f" [{time_str}]"
 
-            source_menu = QtWidgets.QMenu(title, self.menu)
-            self.menu.addMenu(source_menu)
-            
+            source_menu = QtWidgets.QMenu(title, self._status_menu)
+            self._status_menu.addMenu(source_menu)
+
             # Enable/Disable action
             toggle_action = QtGui.QAction("Enabled", source_menu)
             toggle_action.setCheckable(True)
             toggle_action.setChecked(source.enabled)
-            toggle_action.triggered.connect(lambda checked, s=source: self.toggle_source(s, checked))
+            toggle_action.triggered.connect(
+                lambda checked, s=source: self.toggle_source(s, checked)
+            )
             source_menu.addAction(toggle_action)
-            
+
             # Refresh action
             refresh_action = QtGui.QAction("Refresh Now", source_menu)
             refresh_action.setEnabled(source.enabled)
             refresh_action.triggered.connect(lambda _, s=source: self.refresh_requested.emit(s.id))
             source_menu.addAction(refresh_action)
-            
-        self.menu.addSeparator()
-        manage_action = self.menu.addAction("Manage Sources...")
+
+        self._status_menu.addSeparator()
+        manage_action = self._status_menu.addAction("Manage Sources...")
         manage_action.triggered.connect(self.manage_requested.emit)
 
     def toggle_source(self, source, enabled):
         source.enabled = enabled
-        # Saving configuration triggers the sources_changed signal, 
+        # Saving configuration triggers the sources_changed signal,
         # which will refresh this menu and notify other components.
         self.sm.save_configuration()

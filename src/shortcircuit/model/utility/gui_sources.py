@@ -9,11 +9,12 @@ import uuid
 
 
 class SourceConfigurationDialog(QtWidgets.QDialog):
+    sources_saved = QtCore.Signal()
+
     def __init__(self, source_manager, parent=None):
         super().__init__(parent)
         self.source_manager = source_manager
         self.setWindowTitle("Wormhole Sources Configuration")
-        self.sources_saved = QtCore.Signal()
         self.setMinimumSize(700, 450)
 
         # Working copy of sources

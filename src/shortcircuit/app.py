@@ -222,7 +222,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
 
         # Tripwire
-        self.pushButton_trip_config = QtWidgets.QPushButton("Wormhole Sources")
+        self.pushButton_trip_config = QtWidgets.QPushButton("Wormhole Configuration")
         self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Wormholes")
         self.pushButton_trip_get.setEnabled(False)
 
@@ -471,6 +471,26 @@ class MainWindow(QtWidgets.QMainWindow):
         height: 14px;
         margin: -5px 0;
         border-radius: 7px;
+    }
+
+    /* Popup Menus */
+    QMenu {
+        background-color: #21252b;
+        border: 1px solid #3e4451;
+        color: #dcdcdc;
+    }
+    QMenu::item {
+        padding: 5px 25px 5px 20px;
+        border: 1px solid transparent;
+    }
+    QMenu::item:selected {
+        background-color: #3e4451;
+        border-color: #00aaff;
+    }
+    QMenu::separator {
+        height: 1px;
+        background: #3e4451;
+        margin: 5px 10px;
     }
     """
         self.setStyleSheet(style)
@@ -1161,12 +1181,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if has_errors:
             self.status_sources_widget.setText(
-                f"Wormhole Sources: {active_count} Active ({total_connections} conn) - ERRORS"
+                f"Wormhole Status: {active_count} Active ({total_connections} conn) - ERRORS"
             )
             self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
         else:
             self.status_sources_widget.setText(
-                f"Wormhole Sources: {active_count} Active ({total_connections} conn)"
+                f"Wormhole Status: {active_count} Active ({total_connections} conn)"
             )
             if active_count > 0:
                 self.status_sources_widget.setStyleSheet("color: #98c379;")
@@ -1422,12 +1442,13 @@ class MainWindow(QtWidgets.QMainWindow):
             f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
         )
 
-        if sys.platform == 'linux':
+        if sys.platform == "linux":
             import subprocess
+
             env = os.environ.copy()
-            env.pop('LD_LIBRARY_PATH', None)
+            env.pop("LD_LIBRARY_PATH", None)
             try:
-                subprocess.Popen(['xdg-open', url_to_open.toString()], env=env)
+                subprocess.Popen(["xdg-open", url_to_open.toString()], env=env)
             except OSError:
                 webbrowser.open(url_to_open.toString())
         else:
