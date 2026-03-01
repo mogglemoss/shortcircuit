@@ -1210,19 +1210,18 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
-    @QtCore.Slot(bool, str, int)
-    def login_handler(self, is_ok, char_name=None, char_id=0):
-        # Handle cases where PySide might mangle the argument list across threads
-        if isinstance(char_name, int) and char_id == 0:
-            char_id = char_name
-            char_name = "Unknown"
-            
+    @QtCore.Slot(dict)
+    def login_handler(self, result):
+        is_ok = result.get('is_ok', False)
+        char_name = result.get('char_name', 'Unknown')
+        char_id = int(result.get('char_id', 0))
+
         self.state_eve_connection["connected"] = is_ok
         self.state_eve_connection["char_name"] = char_name
         self.state_eve_connection["char_id"] = char_id if is_ok else 0
         self.state_eve_connection["error"] = "ESI error" if not is_ok else None
-        
-        Logger.info(f"Login handler received: ok={is_ok}, name={char_name}, id={char_id}")
+
+        Logger.info(f"Login handler received dict: ok={is_ok}, name={char_name}, id={char_id}")
         self._status_eve_connection_update()
 
     @QtCore.Slot()
@@ -1482,16 +1481,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _load_portrait(self, char_id):
         url = f"https://images.evetech.net/characters/{char_id}/portrait?size=128"
+        Logger.info(f"Portrait request: char_id={char_id}, url={url}")
         self.network_manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
 
     def _on_portrait_loaded(self, reply):
+        url = reply.url().toString()
         if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
             data = reply.readAll()
             pixmap = QtGui.QPixmap()
-            pixmap.loadFromData(data)
-            self.lbl_portrait.setPixmap(pixmap)
+            ok = pixmap.loadFromData(data)
+            Logger.info(f"Portrait response: url={url}, data_size={len(data)}, decode_ok={ok}")
+            if ok:
+                self.lbl_portrait.setPixmap(pixmap)
+            else:
+                Logger.error(f"Portrait image decode failed for {url}")
         else:
-            Logger.error(f"Failed to load portrait: {reply.errorString()}")
+            Logger.error(f"Portrait network error: {reply.errorString()}, url={url}")
         reply.deleteLater()
 
     # event: QCloseEvent
