@@ -53,7 +53,11 @@ class SourceStatusWidget(QtWidgets.QPushButton):
 
         for source in sources:
             # Create a sub-menu for each source
-            title = f"{source.name} ({source.type.value})"
+            status_emoji = "🟢" if source.enabled and source.status_ok else "⚪"
+            if source.enabled and not source.status_ok:
+                status_emoji = "🔴"
+
+            title = f"{status_emoji} {source.name} ({source.type.value})"
             if source.last_updated:
                 delta = now - source.last_updated
                 secs = int(delta.total_seconds())
