@@ -5,6 +5,8 @@ import hashlib
 import json
 import secrets
 import threading
+import time
+import urllib.parse
 import uuid
 import webbrowser
 
@@ -15,17 +17,68 @@ from shortcircuit import USER_AGENT
 from .server import AuthHandler, StoppableHTTPServer
 
 
+# CCP recommends discovering SSO endpoints from the OAuth metadata document
+# rather than hardcoding them. When they retire or move a route (as with the
+# 24 March 2026 spring cleaning that removed /verify and implicit flow) a
+# deployed client that follows the metadata will keep working without a
+# rebuild. The fallback URLs below are only used if the metadata fetch fails.
+# https://developers.eveonline.com/docs/services/sso/
+ENDPOINT_EVE_METADATA = "https://login.eveonline.com/.well-known/oauth-authorization-server"
+FALLBACK_AUTHORIZATION_ENDPOINT = "https://login.eveonline.com/v2/oauth/authorize"
+FALLBACK_TOKEN_ENDPOINT = "https://login.eveonline.com/v2/oauth/token"
+_METADATA_CACHE_TTL_SECONDS = 3600
+
+_metadata_cache_lock = threading.Lock()
+_metadata_cache = {"fetched_at": 0.0, "endpoints": None}
+
+
+def discover_sso_endpoints(force_refresh=False):
+    """
+    Fetch and cache the EVE SSO OAuth metadata document.
+
+    Returns a dict with at least ``authorization_endpoint`` and
+    ``token_endpoint``. On network failure, returns the hardcoded fallback
+    values so login still works (at least until CCP retires those routes).
+    The cache is per-process, in-memory, and refreshes hourly.
+    """
+    now = time.monotonic()
+    with _metadata_cache_lock:
+        cached = _metadata_cache["endpoints"]
+        if (
+            not force_refresh
+            and cached is not None
+            and now - _metadata_cache["fetched_at"] < _METADATA_CACHE_TTL_SECONDS
+        ):
+            return cached
+
+    try:
+        r = httpx.get(ENDPOINT_EVE_METADATA, headers={"User-Agent": USER_AGENT}, timeout=10.0)
+        r.raise_for_status()
+        data = r.json()
+        endpoints = {
+            "authorization_endpoint": data["authorization_endpoint"],
+            "token_endpoint": data["token_endpoint"],
+        }
+    except (httpx.HTTPError, KeyError, ValueError) as e:
+        Logger.warning(
+            "SSO metadata discovery failed ({}); falling back to hardcoded endpoints".format(e)
+        )
+        endpoints = {
+            "authorization_endpoint": FALLBACK_AUTHORIZATION_ENDPOINT,
+            "token_endpoint": FALLBACK_TOKEN_ENDPOINT,
+        }
+
+    with _metadata_cache_lock:
+        _metadata_cache["fetched_at"] = now
+        _metadata_cache["endpoints"] = endpoints
+    return endpoints
+
+
 class ESI:
     ENDPOINT_ESI_LOCATION_FORMAT = "https://esi.evetech.net/latest/characters/{}/location/"
     ENDPOINT_ESI_UNIVERSE_NAMES = "https://esi.evetech.net/latest/universe/names/"
     ENDPOINT_ESI_UI_WAYPOINT = "https://esi.evetech.net/latest/ui/autopilot/waypoint/"
 
-    ENDPOINT_EVE_TOKEN = "https://login.eveonline.com/v2/oauth/token"
-    ENDPOINT_EVE_AUTH_FORMAT = (
-        "https://login.eveonline.com/v2/oauth/authorize"
-        "?response_type=code&redirect_uri={}&client_id={}&scope={}&state={}"
-        "&code_challenge={}&code_challenge_method=S256"
-    )
     CLIENT_CALLBACK = "http://127.0.0.1:7444/callback/"
     CLIENT_ID = "d802bba44b7c4f6cbfa2944b0e5ea83f"
     CLIENT_SCOPES = [
@@ -99,10 +152,17 @@ class ESI:
             self.httpd.tries = 0
 
         self.code_verifier, code_challenge = self._generate_pkce()
-        scopes = " ".join(ESI.CLIENT_SCOPES)
-        endpoint_auth = ESI.ENDPOINT_EVE_AUTH_FORMAT.format(
-            ESI.CLIENT_CALLBACK, ESI.CLIENT_ID, scopes, self.state, code_challenge
-        )
+        endpoints = discover_sso_endpoints()
+        query = urllib.parse.urlencode({
+            "response_type": "code",
+            "redirect_uri": ESI.CLIENT_CALLBACK,
+            "client_id": ESI.CLIENT_ID,
+            "scope": " ".join(ESI.CLIENT_SCOPES),
+            "state": self.state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        })
+        endpoint_auth = "{}?{}".format(endpoints["authorization_endpoint"], query)
 
         if __import__("sys").platform == "linux":
             import subprocess
@@ -139,9 +199,12 @@ class ESI:
         if "code" not in message:
             return
 
-        # Exchange auth code for access token (PKCE flow)
+        # Exchange auth code for access token (PKCE flow). Reuse the metadata
+        # cache warmed by start_server() so we post to the same token endpoint
+        # CCP currently advertises.
+        endpoints = discover_sso_endpoints()
         r = httpx.post(
-            ESI.ENDPOINT_EVE_TOKEN,
+            endpoints["token_endpoint"],
             data={
                 "grant_type": "authorization_code",
                 "code": message["code"][0],
