@@ -1,5 +1,9 @@
 # esi.py
 
+import base64
+import hashlib
+import json
+import secrets
 import threading
 import uuid
 import webbrowser
@@ -12,23 +16,15 @@ from .server import AuthHandler, StoppableHTTPServer
 
 
 class ESI:
-    """
-    ESI
-
-    We are bad boys here.
-    What should have been done is proxy auth server with code request, storage and all that stuff.
-    Instead we just follow implicit flow and ask to relogin every time.
-    From Russia with love.
-    """
-
-    ENDPOINT_ESI_VERIFY = "https://esi.evetech.net/verify"
     ENDPOINT_ESI_LOCATION_FORMAT = "https://esi.evetech.net/latest/characters/{}/location/"
     ENDPOINT_ESI_UNIVERSE_NAMES = "https://esi.evetech.net/latest/universe/names/"
     ENDPOINT_ESI_UI_WAYPOINT = "https://esi.evetech.net/latest/ui/autopilot/waypoint/"
 
+    ENDPOINT_EVE_TOKEN = "https://login.eveonline.com/v2/oauth/token"
     ENDPOINT_EVE_AUTH_FORMAT = (
         "https://login.eveonline.com/v2/oauth/authorize"
-        "?response_type=token&redirect_uri={}&client_id={}&scope={}&state={}"
+        "?response_type=code&redirect_uri={}&client_id={}&scope={}&state={}"
+        "&code_challenge={}&code_challenge_method=S256"
     )
     CLIENT_CALLBACK = "http://127.0.0.1:7444/callback/"
     CLIENT_ID = "d802bba44b7c4f6cbfa2944b0e5ea83f"
@@ -42,11 +38,45 @@ class ESI:
         self.logout_callback = logout_callback
         self.httpd = None
         self.state = None
+        self.code_verifier = None
 
         self.token = None
         self.char_id = None
         self.char_name = None
         self.sso_timer = None
+
+    @staticmethod
+    def _generate_pkce():
+        verifier = secrets.token_urlsafe(96)
+        challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(verifier.encode()).digest()
+        ).rstrip(b"=").decode()
+        return verifier, challenge
+
+    @staticmethod
+    def _decode_jwt_payload(token):
+        """
+        Decode the claims from an EVE SSO JWT access token without signature
+        verification. We trust the token because we just received it over TLS
+        directly from login.eveonline.com's token endpoint.
+
+        CCP removed the /verify REST endpoint on 24 March 2026 and explicitly
+        recommends offline JWT decoding:
+        https://developers.eveonline.com/blog/spring-cleaning-legacy-routes-removed-24-march-2026
+
+        Relevant claims:
+          sub:  "CHARACTER:EVE:<character_id>"
+          name: character name
+          scp:  list of granted scopes
+        """
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise ValueError("malformed JWT")
+        payload_b64 = parts[1]
+        # Pad for urlsafe_b64decode
+        payload_b64 += "=" * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64).decode("utf-8"))
+        return payload
 
     def start_server(self):
         if not self.httpd:
@@ -68,9 +98,10 @@ class ESI:
             # Server already running - reset timeout counter
             self.httpd.tries = 0
 
+        self.code_verifier, code_challenge = self._generate_pkce()
         scopes = " ".join(ESI.CLIENT_SCOPES)
         endpoint_auth = ESI.ENDPOINT_EVE_AUTH_FORMAT.format(
-            ESI.CLIENT_CALLBACK, ESI.CLIENT_ID, scopes, self.state
+            ESI.CLIENT_CALLBACK, ESI.CLIENT_ID, scopes, self.state, code_challenge
         )
 
         if __import__("sys").platform == "linux":
@@ -105,31 +136,58 @@ class ESI:
                 Logger.warning("OAUTH state mismatch")
                 return
 
-        if "access_token" in message:
-            self.token = message["access_token"][0]
-            self.sso_timer = threading.Timer(int(message["expires_in"][0]), self._logout)
+        if "code" not in message:
+            return
+
+        # Exchange auth code for access token (PKCE flow)
+        r = httpx.post(
+            ESI.ENDPOINT_EVE_TOKEN,
+            data={
+                "grant_type": "authorization_code",
+                "code": message["code"][0],
+                "client_id": ESI.CLIENT_ID,
+                "code_verifier": self.code_verifier,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        if r.status_code == httpx.codes.OK:
+            token_data = r.json()
+            self.token = token_data["access_token"]
+            self.sso_timer = threading.Timer(int(token_data["expires_in"]), self._logout)
             self.sso_timer.daemon = True
             self.sso_timer.start()
 
-            r = httpx.get(ESI.ENDPOINT_ESI_VERIFY, headers=self._get_headers())
-            if r.status_code == httpx.codes.OK:
-                data = r.json()
-                # Explicitly ensure these are the correct types
-                self.char_id = int(data.get("CharacterID", 0))
-                self.char_name = str(data.get("CharacterName", "Unknown"))
-
+            # Decode character info from the JWT access token. CCP removed the
+            # /verify REST endpoint on 24 March 2026 in favour of offline JWT
+            # decoding.
+            try:
+                claims = self._decode_jwt_payload(self.token)
+                sub = claims.get("sub", "")
+                # sub looks like "CHARACTER:EVE:12345"
+                char_id = int(sub.rsplit(":", 1)[-1])
+                char_name = str(claims.get("name", "Unknown"))
+                self.char_id = char_id
+                self.char_name = char_name
                 self.login_callback(
                     {"is_ok": True, "char_name": self.char_name, "char_id": self.char_id}
                 )
-            else:
-                self.token = None
-                self.sso_timer = None
-                self.char_id = None
-                self.char_name = None
-
+            except (ValueError, KeyError, IndexError) as e:
+                Logger.warning("Failed to decode JWT claims: {}".format(e))
+                self._reset_auth()
                 self.login_callback({"is_ok": False, "char_name": None, "char_id": 0})
+        else:
+            Logger.warning("Token exchange failed: {} {}".format(r.status_code, r.text))
+            self._reset_auth()
+            self.login_callback({"is_ok": False, "char_name": None, "char_id": 0})
 
         self.stop_server()
+
+    def _reset_auth(self):
+        self.token = None
+        self.sso_timer = None
+        self.char_id = None
+        self.char_name = None
 
     def _get_headers(self):
         return {
