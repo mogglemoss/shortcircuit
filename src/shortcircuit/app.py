@@ -193,6 +193,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.esip.logout_response.connect(self.logout_handler)
         self.esip.location_response.connect(self.location_handler)
         self.esip.destination_response.connect(self.destination_handler)
+        # Try to resume a previous session via the OS keyring so the user
+        # doesn't have to re-auth through the browser on every app start.
+        # This is a no-op the first time the app ever runs (no stored token)
+        # and on platforms without a working keyring backend.
+        self.esip.try_silent_login()
 
         # Start version check
         self.version_thread.start()

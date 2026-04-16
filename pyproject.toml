@@ -1,6 +1,6 @@
 [project]
 name = "shortcircuit"
-version = "2.2.6"
+version = "2.3.0"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -15,6 +15,7 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "appdirs>=1.4.4",
     "pyinstaller>=6.0.0",
+    "keyring>=25.0.0",
 ]
 
 [build-system]

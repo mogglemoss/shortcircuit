@@ -26,6 +26,14 @@ class ESIProcessor(QtCore.QObject):
     def logout(self):
         self.esi.logout()
 
+    def try_silent_login(self):
+        """Attempt to resume a stored session without opening a browser.
+        Runs the keyring lookup + token refresh on a background thread so
+        app startup isn't blocked on the network."""
+        server_thread = threading.Thread(target=self.esi.try_silent_login)
+        server_thread.daemon = True
+        server_thread.start()
+
     def get_location(self):
         server_thread = threading.Thread(target=self._get_location)
         server_thread.daemon = True
