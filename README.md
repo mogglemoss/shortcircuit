@@ -119,7 +119,7 @@ Fly accordingly.
 
 - **[farshield](https://github.com/farshield/shortcircuit)** — Built the original Short Circuit. An absolute legend who started all of this.
 - **[secondfry](https://github.com/secondfry/shortcircuit)** — Kept the lights on through years of ESI changes and CCP's creative approach to API stability. Also a legend. Arguably more of a legend, given the sustained and thankless nature of the effort.
-- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added multi-source aggregation, Wanderer support, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud alumni of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
+- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added multi-source aggregation, Wanderer support, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud boomerang of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
 
 ---
 
