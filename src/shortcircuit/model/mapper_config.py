@@ -13,6 +13,7 @@ SETTINGS_KEY = "MapperConfigs"
 TYPE_TRIPWIRE = "tripwire"
 TYPE_EVESCOUT = "evescout"
 TYPE_WANDERER = "wanderer"
+TYPE_PATHFINDER = "pathfinder"
 
 
 @dataclass
@@ -24,9 +25,10 @@ class MapperConfig:
   which MapperSource subclass to instantiate; `name` is the user-facing
   label that also serves as the key in the `results` dict emitted by
   NavProcessor. `url`/`user`/`password` are mapper-agnostic config slots —
-  Eve Scout ignores user/password, and Wanderer stores its map slug in
-  `user` and its API bearer token in `password` (the token is a secret, so
-  it belongs in the slot the UI masks).
+  Eve Scout ignores user/password, Wanderer stores its map slug in `user`
+  and its API bearer token in `password` (the token is a secret, so it
+  belongs in the slot the UI masks), and Pathfinder stores its optional
+  bearer token in `password` with `user` unused.
   """
   type: str
   name: str

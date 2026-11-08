@@ -5,8 +5,15 @@ from typing import TYPE_CHECKING, Callable, Dict, List
 from .evedb import EveDb, SystemDescription, WormholeMassspan, WormholeSize, WormholeTimespan
 from .evescout import EveScout
 from .mapper_base import MapperSource
-from .mapper_config import TYPE_EVESCOUT, TYPE_TRIPWIRE, TYPE_WANDERER, MapperConfig
+from .mapper_config import (
+  TYPE_EVESCOUT,
+  TYPE_PATHFINDER,
+  TYPE_TRIPWIRE,
+  TYPE_WANDERER,
+  MapperConfig,
+)
 from .mapper_registry import MapperRegistry
+from .pathfinder import Pathfinder
 from .solarmap import ConnectionType, SolarMap
 from .tripwire import Tripwire
 from .wanderer import Wanderer
@@ -42,10 +49,21 @@ def _build_wanderer(cfg: MapperConfig) -> MapperSource:
   )
 
 
+def _build_pathfinder(cfg: MapperConfig) -> MapperSource:
+  # Pathfinder keeps its optional bearer token in the `password` slot; see
+  # the MapperConfig docstring.
+  return Pathfinder(
+    url=cfg.url,
+    token=cfg.password,
+    name=cfg.name,
+  )
+
+
 MAPPER_BUILDERS: Dict[str, Callable[[MapperConfig], MapperSource]] = {
   TYPE_TRIPWIRE: _build_tripwire,
   TYPE_EVESCOUT: _build_evescout,
   TYPE_WANDERER: _build_wanderer,
+  TYPE_PATHFINDER: _build_pathfinder,
 }
 
 

@@ -1,175 +1,195 @@
-# src/shortcircuit/model/pathfinder.py
+# pathfinder.py
 
-import asyncio
-from datetime import datetime, timezone
-from typing import Tuple, Dict, Any, List, Optional
+from datetime import UTC, datetime
+from typing import Any, Dict, Optional
 
-import httpx
+import requests
 from shortcircuit import USER_AGENT
-from .evedb import EveDb, WormholeSize, WormholeTimespan, WormholeMassspan
-from .solarmap import SolarMap, ConnectionType
+
+from .evedb import EveDb, WormholeMassspan, WormholeSize, WormholeTimespan
 from .logger import Logger
+from .mapper_base import MapperSource
+from .solarmap import ConnectionType, SolarMap
 
 
-class Pathfinder:
+class Pathfinder(MapperSource):
   """
-  Pathfinder handler
-  """
+  Pathfinder wormhole mapper connections provider.
 
-  def __init__(self, url: str, token: str, name: str = "Pathfinder"):
-    self.eve_db = EveDb()
-    self.url = url.strip().rstrip('/') if url else ""
-    if self.url and not (self.url.startswith('http://') or self.url.startswith('https://')):
-      self.url = 'https://' + self.url
-    self.token = token
+  Pathfinder instances don't expose a standard public connections API, so
+  this source targets a JSON export endpoint: either a URL ending in
+  .json, an explicit /api path, or a base URL to which /api/connections
+  is appended. Each entry needs `source` and `target` system ids;
+  signature, type, life, mass, size and updated_at fields are read when
+  present.
+  """
+  TIMEOUT = 10
+
+  def __init__(
+    self,
+    url: str,
+    token: str = '',
+    name: str = "Pathfinder",
+  ):
+    url = (url or '').strip().rstrip('/')
+    if url and not (url.startswith('http://') or url.startswith('https://')):
+      url = 'https://' + url
+    self.url = url
+    self.token = (token or '').strip()
     self.name = name
-    self.source_id = name
+    self.eve_db = EveDb()
 
-  def get_name(self) -> str:
-    return self.name
+  def augment_map(self, solar_map: SolarMap):
+    """
+    :param solar_map: SolarMap
+    :return: Number of connections in case of success, -1 in case of failure
+    """
+    connections_list = self._fetch_connections()
+    if connections_list is None:
+      return -1
 
-  def test_credentials(self) -> Tuple[bool, str]:
-    return asyncio.run(self._test_credentials_task())
+    connections = 0
+    for conn in connections_list:
+      if self._process_connection(conn, solar_map):
+        connections += 1
+    return connections
 
-  async def _test_credentials_task(self) -> Tuple[bool, str]:
-    try:
-      async with httpx.AsyncClient(verify=True) as client:
-        # Check if we can reach the server
-        response = await client.get(
-          self.url,
-          headers={'User-Agent': USER_AGENT},
-          follow_redirects=True,
-          timeout=10.0
-        )
-        
-        if response.status_code < 400:
-          return True, "Connection successful (URL reachable)"
-        else:
-          return False, f"HTTP Error {response.status_code}"
-    except Exception as e:
-      return False, f"Connection failed: {e}"
+  def _fetch_connections(self) -> Optional[list]:
+    is_valid, error = self.validate_config()
+    if not is_valid:
+      Logger.error(f"Pathfinder '{self.name}' misconfigured: {error}")
+      return None
 
-  async def _augment_map_async(self, solar_map: SolarMap) -> int:
-    # Construct the API endpoint. 
-    # If the user provided a base URL (e.g. https://pathfinder.example.com),
-    # we assume the API is at /api/connections or similar.
-    # Adjust this endpoint based on your specific Pathfinder export configuration.
     target_url = self.url
     if not target_url.endswith('.json') and '/api' not in target_url:
-        target_url = f"{target_url}/api/connections"
+      target_url = f"{target_url}/api/connections"
 
     headers = {
       'User-Agent': USER_AGENT,
-      'Authorization': f'Bearer {self.token}' if self.token else None,
-      'Accept': 'application/json'
+      'Accept': 'application/json',
     }
-    # Remove None headers
-    headers = {k: v for k, v in headers.items() if v is not None}
+    if self.token:
+      headers['Authorization'] = f"Bearer {self.token}"
 
     try:
-      async with httpx.AsyncClient(verify=True) as client:
-        response = await client.get(target_url, headers=headers, timeout=10.0)
-        
-        if response.status_code != 200:
-          Logger.error(f"Pathfinder API returned {response.status_code}")
-          return -1
-        
-        data = response.json()
-        # Handle list or dict response
-        connections_list = data.get('connections', []) if isinstance(data, dict) else data
-        
-        if not isinstance(connections_list, list):
-          Logger.error("Pathfinder API response format not recognized")
-          return -1
+      result = requests.get(
+        url=target_url,
+        headers=headers,
+        timeout=Pathfinder.TIMEOUT,
+      )
+    except requests.exceptions.RequestException as e:
+      Logger.error(f"Exception raised while trying to get Pathfinder data from '{target_url}'")
+      Logger.error(e)
+      return None
 
-        count = 0
-        for conn in connections_list:
-          if self._process_connection(conn, solar_map):
-            count += 1
-        return count
+    if result.status_code != 200:
+      Logger.error(f"Pathfinder '{self.name}': HTTP {result.status_code}")
+      return None
 
-    except Exception as e:
-      Logger.error(f"Failed to fetch Pathfinder data: {e}")
-      return -1
+    try:
+      payload = result.json()
+    except ValueError as e:
+      Logger.error(f"Pathfinder '{self.name}': invalid JSON response: {e}")
+      return None
+
+    connections_list = (
+      payload.get('connections', []) if isinstance(payload, dict) else payload
+    )
+    if not isinstance(connections_list, list):
+      Logger.error(f"Pathfinder '{self.name}': unexpected response shape")
+      return None
+    return connections_list
 
   def _process_connection(self, conn: Dict[str, Any], solar_map: SolarMap) -> bool:
     try:
-      # Extract IDs
-      source_id = int(conn.get('source', 0))
-      dest_id = int(conn.get('target', 0))
-      
-      if source_id == 0 or dest_id == 0:
-        return False
-
-      # Signatures & Type
-      sig_source = conn.get('source_sig', '???')
-      sig_dest = conn.get('target_sig', '???')
-      wh_type = conn.get('type', 'K162')
-      
-      # Life & Mass
-      life_str = str(conn.get('life', 'stable')).lower()
-      mass_str = str(conn.get('mass', 'stable')).lower()
-      
-      wh_life = WormholeTimespan.STABLE
-      if 'crit' in life_str:
-        wh_life = WormholeTimespan.CRITICAL
-        
-      wh_mass = WormholeMassspan.STABLE
-      if 'destab' in mass_str:
-        wh_mass = WormholeMassspan.DESTAB
-      elif 'crit' in mass_str:
-        wh_mass = WormholeMassspan.CRITICAL
-        
-      # Size
-      wh_size = self.eve_db.get_whsize_by_code(wh_type)
-      if not WormholeSize.valid(wh_size):
-         size_str = str(conn.get('size', '')).lower()
-         if 'xl' in size_str: wh_size = WormholeSize.XLARGE
-         elif 'large' in size_str: wh_size = WormholeSize.LARGE
-         elif 'medium' in size_str: wh_size = WormholeSize.MEDIUM
-         elif 'small' in size_str: wh_size = WormholeSize.SMALL
-         else:
-            wh_size = self.eve_db.get_whsize_by_system(source_id, dest_id)
-
-      # Time elapsed
-      updated_at_str = conn.get('updated_at')
-      time_elapsed = 0.0
-      if updated_at_str:
-        try:
-          # Handle ISO format (e.g. 2023-10-27T10:00:00Z)
-          if 'Z' in updated_at_str:
-             updated_at_str = updated_at_str.replace('Z', '+00:00')
-          updated_at = datetime.fromisoformat(updated_at_str)
-          if updated_at.tzinfo is None:
-             updated_at = updated_at.replace(tzinfo=timezone.utc)
-          
-          delta = datetime.now(timezone.utc) - updated_at
-          time_elapsed = round(delta.total_seconds() / 3600.0, 1)
-        except ValueError:
-          pass
-
-      from shortcircuit.model.connection_db import ConnectionData
-      solar_map.add_connection(
-        ConnectionData(
-          source_id=self.source_id,
-          source_system=source_id,
-          dest_system=dest_id,
-          con_type=ConnectionType.WORMHOLE,
-          sig_source=sig_source,
-          code_source=wh_type,
-          sig_dest=sig_dest,
-          code_dest='K162',
-          wh_size=wh_size,
-          wh_life=wh_life,
-          wh_mass=wh_mass,
-          time_elapsed=time_elapsed,
-          source_name=self.name
-        )
-      )
-      return True
-    except Exception as e:
-      Logger.error(f"Error processing Pathfinder connection: {e}")
+      source = int(conn.get('source', 0))
+      dest = int(conn.get('target', 0))
+    except (TypeError, ValueError):
+      return False
+    if not source or not dest:
       return False
 
-  def augment_map(self, solar_map: SolarMap) -> int:
-    return asyncio.run(self._augment_map_async(solar_map))
+    sig_source = conn.get('source_sig') or '???'
+    sig_dest = conn.get('target_sig') or '???'
+    code_source = conn.get('type') or 'K162'
+
+    life_str = str(conn.get('life', 'stable')).lower()
+    wh_life = (
+      WormholeTimespan.CRITICAL if 'crit' in life_str else WormholeTimespan.STABLE
+    )
+
+    mass_str = str(conn.get('mass', 'stable')).lower()
+    if 'destab' in mass_str:
+      wh_mass = WormholeMassspan.DESTAB
+    elif 'crit' in mass_str:
+      wh_mass = WormholeMassspan.CRITICAL
+    else:
+      wh_mass = WormholeMassspan.STABLE
+
+    wh_size = self.eve_db.get_whsize_by_code(code_source)
+    if not WormholeSize.valid(wh_size):
+      size_str = str(conn.get('size', '')).lower()
+      if 'xl' in size_str:
+        wh_size = WormholeSize.XLARGE
+      elif 'large' in size_str:
+        wh_size = WormholeSize.LARGE
+      elif 'medium' in size_str:
+        wh_size = WormholeSize.MEDIUM
+      elif 'small' in size_str:
+        wh_size = WormholeSize.SMALL
+      else:
+        wh_size = self.eve_db.get_whsize_by_system(source, dest)
+
+    solar_map.add_connection(
+      source,
+      dest,
+      ConnectionType.WORMHOLE,
+      [
+        sig_source,
+        code_source,
+        sig_dest,
+        'K162',
+        wh_size,
+        wh_life,
+        wh_mass,
+        self._time_elapsed(conn.get('updated_at')),
+      ],
+      source_name=self.name,
+    )
+    return True
+
+  @staticmethod
+  def _time_elapsed(updated_at: Optional[str]) -> float:
+    """Hours since the connection was last updated; 0.0 when unknown."""
+    if not updated_at:
+      return 0.0
+    try:
+      if 'Z' in updated_at:
+        updated_at = updated_at.replace('Z', '+00:00')
+      last_modified = datetime.fromisoformat(updated_at)
+      if last_modified.tzinfo is None:
+        last_modified = last_modified.replace(tzinfo=UTC)
+    except ValueError:
+      return 0.0
+    delta = datetime.now(UTC) - last_modified
+    return round(delta.total_seconds() / 3600.0, 1)
+
+  def get_name(self) -> str:
+    """
+    Get the name of this Pathfinder instance.
+
+    Returns:
+      The name of this mapper source
+    """
+    return self.name
+
+  def validate_config(self) -> tuple[bool, Optional[str]]:
+    """
+    Validate the Pathfinder configuration.
+
+    Returns:
+      Tuple of (is_valid, error_message)
+    """
+    if not self.url:
+      return False, "URL is required"
+    return True, None

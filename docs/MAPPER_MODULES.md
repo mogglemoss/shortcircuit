@@ -151,6 +151,31 @@ wanderer = Wanderer(
 )
 ```
 
+### Pathfinder
+
+**Status**: Supported via JSON export endpoints
+
+**Configuration**:
+- URL: a Pathfinder JSON connections export — a URL ending in `.json`, an
+  explicit `/api` path, or a base URL to which `/api/connections` is
+  appended
+- API token: optional bearer token (stored in the `password` slot)
+- Name: Instance identifier
+
+Pathfinder has no standard public connections API, so this source depends
+on the instance exposing an export. Each entry needs `source` and `target`
+system ids; signature, type, life, mass, size and `updated_at` fields are
+read when present.
+
+**Example**:
+```python
+pathfinder = Pathfinder(
+    url="https://pathfinder.example.com",
+    token="optional-token",
+    name="Corp Pathfinder"
+)
+```
+
 ### eve-whmapper
 
 **Status**: Not currently supported - no public API available
