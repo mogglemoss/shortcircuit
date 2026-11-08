@@ -230,6 +230,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         # Navigation
         self.pushButton_eve_login = QtWidgets.QPushButton("Log in with EvE")
+        self.pushButton_eve_login.setObjectName("pushButton_eve_login")
         self.pushButton_player_location = QtWidgets.QPushButton("◎")
         self.pushButton_player_location.setFixedSize(42, 42)
         self.pushButton_player_location.setToolTip(
@@ -253,9 +254,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_swap = QtWidgets.QPushButton("⇄")
         self.pushButton_swap.setFixedSize(42, 42)
         self.pushButton_swap.setToolTip("Swap source and destination")
+        self.pushButton_swap.setObjectName("btn_glyph_swap")
+        self.pushButton_player_location.setObjectName("btn_glyph_locate")
 
         self.pushButton_find_path = QtWidgets.QPushButton("Find path")
         self.pushButton_find_path.setMinimumHeight(42)
+        # The stylesheet styles these by objectName (#pushButton_find_path
+        # etc.); programmatic widgets don't get names automatically, so
+        # without these calls the accent colors silently never apply.
+        self.pushButton_find_path.setObjectName("pushButton_find_path")
         self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
         self.pushButton_reset.setMinimumHeight(42)
 
@@ -265,6 +272,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_sources_widget.setObjectName("status_pill")
         self.status_sources_widget.setToolTip("Click to configure mappers")
         self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Mappers")
+        self.pushButton_trip_get.setObjectName("pushButton_trip_get")
         self.pushButton_trip_get.setEnabled(False)
 
         # Identity row (sidebar top)
@@ -562,6 +570,12 @@ class MainWindow(QtWidgets.QMainWindow):
         border-radius: 7px;
     }
 
+    /* Route bar glyph buttons (locate / swap) */
+    QPushButton#btn_glyph_locate, QPushButton#btn_glyph_swap {
+        font-size: 17px;
+        padding: 0;
+    }
+
     /* Mapper status pill (clickable) */
     QLabel#status_pill {
         border: 1px solid #3e4451;
@@ -629,6 +643,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
             slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
             slider.setRange(1, 100)
+            # The filled part of the bar and the handle carry the row's
+            # security color, matching the label (HS green, LS yellow,
+            # NS red, WH blue).
+            slider.setStyleSheet(
+                f"QSlider::sub-page:horizontal {{ background: {color}; border: 1px solid {color}; border-radius: 3px; }}"
+                f" QSlider::handle:horizontal {{ background: {color}; border: 1px solid {color}; }}"
+            )
 
             val_lbl = QtWidgets.QLabel("1")
             val_lbl.setFixedWidth(25)
@@ -735,7 +756,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 last_update,
             )
         )
-        self._path_message("", MessageType.OK)
+        self._path_message("Type a destination and press Find path", MessageType.INFO)
         self._avoid_message("", MessageType.OK)
         self.lineEdit_source.setFocus()
         self.lineEdit_short_format.mousePressEvent = partial(MainWindow.short_format_click, self)
@@ -1471,6 +1492,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.worker_thread.isRunning():
             self.pushButton_trip_get.setEnabled(False)
             self.pushButton_find_path.setEnabled(False)
+            self.status_sources_widget.setText("●  Refreshing mappers…")
+            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
             self.worker_thread.start()
         else:
             self._update_sources_status()
