@@ -454,7 +454,8 @@ class MainWindow(QtWidgets.QMainWindow):
     
     /* Sidebar */
     QWidget#sidebar { background-color: #21252b; border-right: 1px solid #181a1f; }
-    QLabel#sidebar_header { font-size: 14px; font-weight: bold; color: #abb2bf; padding: 5px; }
+    /* No padding: the name must sit flush-left with the status line below it. */
+    QLabel#sidebar_header { font-size: 14px; font-weight: bold; color: #abb2bf; padding: 0; }
     
     /* GroupBoxes */
     QGroupBox { 
