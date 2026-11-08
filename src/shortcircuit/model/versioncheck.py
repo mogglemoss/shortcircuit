@@ -1,10 +1,9 @@
 # versioncheck.py
-import asyncio
 import json
 import os
 from datetime import datetime, timedelta
 
-import httpx
+import requests
 import semver
 from PySide6 import QtCore
 from dateutil import parser
@@ -26,25 +25,18 @@ class VersionCheck(QtCore.QObject):
     """
     Emits latest version string
     """
+
     if 'DEBUG' in os.environ:
       import debugpy
       debugpy.debug_this_thread()
 
     try:
-      asyncio.run(self._process_async())
-    except BaseException as e:
-      Logger.error(f"VersionCheck exception: {e}", exc_info=True)
-      self.finished.emit(None)
-
-  async def _process_async(self):
-    try:
-      async with httpx.AsyncClient() as client:
-        response = await client.get(
-          url='https://api.github.com/repos/mogglemoss/shortcircuit/releases/latest',
-          timeout=3.1,
-          follow_redirects=True,
-        )
-    except httpx.RequestError as e:
+      response = requests.get(
+        url=
+        'https://api.github.com/repos/secondfry/shortcircuit/releases/latest',
+        timeout=3.1,
+      )
+    except requests.exceptions.RequestException as e:
       Logger.error('Exception raised while trying to get latest version info')
       Logger.error(e)
       self.finished.emit(None)
@@ -77,7 +69,7 @@ class VersionCheck(QtCore.QObject):
 
     github_version = github_data['tag_name'].split('v')[-1]
     try:
-      if semver.Version.parse(github_version) <= semver.Version.parse(app_version):
+      if semver.compare(github_version, app_version) != 1:
         Logger.debug('GitHub version is not newer')
         return False
     except ValueError:
@@ -94,7 +86,7 @@ class VersionCheck(QtCore.QObject):
 
     saved_version = Configuration.settings.value('updates/version')
     Logger.debug('Latest remote version saved is – v{}'.format(saved_version))
-    if not saved_version or semver.Version.parse(github_version) != semver.Version.parse(saved_version):
+    if not saved_version or semver.compare(github_version, saved_version) != 0:
       Configuration.settings.setValue('updates/version', github_version)
       Configuration.settings.setValue(
         'updates/ping_timestamp', datetime_now_string

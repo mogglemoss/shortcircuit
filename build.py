@@ -12,12 +12,12 @@ def check_dependencies():
     """Checks if required dependencies are installed."""
     required = [
         "PySide6",
-        "httpx",
+        "requests",
         "semver",
         "dateutil",
-        "qdarktheme",
         "appdirs",
         "typing_extensions",
+        "keyring",
         "PyInstaller",
     ]
     missing = []
@@ -34,7 +34,7 @@ def check_dependencies():
         package_map = {
             "dateutil": "python-dateutil",
             "typing_extensions": "typing-extensions",
-            "qdarktheme": "pyqtdarktheme",
+            "requests": "requests[socks]",
             "PyInstaller": "pyinstaller",
         }
         packages = [package_map.get(m, m) for m in missing]
@@ -136,14 +136,15 @@ def build(sde_only=False):
     # Add other necessary hidden imports
     hidden_imports.extend(
         [
-            "httpx",
+            "requests",
             "dateutil",
             "semver",
-            "qdarktheme",
             "typing_extensions",
             "appdirs",
+            "keyring",
             "PySide6.QtNetwork",
             "shortcircuit.model.wanderer",
+            "shortcircuit.model.pathfinder",
         ]
     )
 
