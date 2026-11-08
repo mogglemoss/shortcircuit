@@ -301,10 +301,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lineEdit_system_avoid_name = QtWidgets.QLineEdit()
         self.lineEdit_system_avoid_name.setPlaceholderText("System name")
         self.pushButton_system_avoid_add = QtWidgets.QPushButton("Add")
+        self.pushButton_system_avoid_add.setProperty("compact", True)
 
         self.lineEdit_region_avoid_name = QtWidgets.QLineEdit()
         self.lineEdit_region_avoid_name.setPlaceholderText("Region name")
         self.pushButton_region_avoid_add = QtWidgets.QPushButton("Add")
+        self.pushButton_region_avoid_add.setProperty("compact", True)
 
         self.listWidget_avoid = QtWidgets.QListWidget()
         self.pushButton_avoid_delete = QtWidgets.QPushButton("Delete")
@@ -324,6 +326,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_copy_clipboard = QtWidgets.QPushButton("Copy")
         self.pushButton_copy_clipboard.setToolTip("Copy route to clipboard")
         self.pushButton_copy_clipboard.setFixedWidth(60)
+        self.pushButton_copy_clipboard.setProperty("compact", True)
 
     def _setup_ui_layout(self):
         """
@@ -439,7 +442,7 @@ class MainWindow(QtWidgets.QMainWindow):
         content_layout.addWidget(results_group)
 
         # Copy-Paste Info Panel
-        copy_panel = QtWidgets.QGroupBox("FC, please help! (Copy-paste info)")
+        copy_panel = QtWidgets.QGroupBox("FC, PLEASE HELP!")
         copy_layout = QtWidgets.QHBoxLayout(copy_panel)
         copy_layout.setContentsMargins(5, 15, 5, 5)
         copy_layout.setSpacing(0)
@@ -570,6 +573,11 @@ class MainWindow(QtWidgets.QMainWindow):
         border-radius: 7px;
     }
 
+    /* Compact buttons sit beside line edits and must match their height */
+    QPushButton[compact="true"] {
+        padding: 6px 12px;
+    }
+
     /* Route bar glyph buttons (locate / swap) */
     QPushButton#btn_glyph_locate, QPushButton#btn_glyph_swap {
         font-size: 17px;
@@ -629,7 +637,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setStyleSheet(style)
 
     def _setup_security_group(self):
-        group = QtWidgets.QGroupBox("Security Prioritization")
+        group = QtWidgets.QGroupBox("SECURITY PRIORITIZATION")
         group.setCheckable(True)
         layout = QtWidgets.QVBoxLayout(group)
         layout.setSpacing(5)
@@ -677,7 +685,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return group
 
     def _setup_avoidance_group(self):
-        group = QtWidgets.QGroupBox("Avoidance List")
+        group = QtWidgets.QGroupBox("AVOIDANCE LIST")
         group.setCheckable(True)
         # Preserve checked state if possible
         if hasattr(self, "groupBox_avoidance"):
@@ -728,7 +736,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return bar
 
     def _setup_restrictions_group(self):
-        group = QtWidgets.QGroupBox("Wormhole Restrictions")
+        group = QtWidgets.QGroupBox("WORMHOLE RESTRICTIONS")
         layout = QtWidgets.QVBoxLayout(group)
 
         row_wh = QtWidgets.QHBoxLayout()
@@ -1309,7 +1317,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 total_connections += state["connections"]
 
         mapper_word = "mapper" if active_count == 1 else "mappers"
-        if has_errors:
+        if active_count > 0 and not has_errors and self._last_fetch_at is None:
+            # Before the first fetch "0 connections" would read as a problem.
+            self.status_sources_widget.setText(
+                f"●  {active_count} {mapper_word} · awaiting first fetch   ⚙"
+            )
+            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
+        elif has_errors:
             self.status_sources_widget.setText(
                 f"●  {active_count} {mapper_word} · {total_connections} connections · errors   ⚙"
             )
