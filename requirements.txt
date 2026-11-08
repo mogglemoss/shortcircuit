@@ -18,13 +18,13 @@ pyinstaller-hooks-contrib==2026.0
 pylint==4.0.4
 pytest==9.0.2
 pywin32-ctypes==0.2.3; sys_platform == 'win32'
-setuptools==80.10.2
+setuptools==84.2.1
 tomli==2.4.0
 tomlkit==0.14.0
 typing-extensions==4.15.0
 yapf==0.43.0
 appdirs==1.4.4
-certifi==2026.1.4
+certifi==2026.10.23
 charset-normalizer==3.4.4
 idna==3.11
 importlib-resources==6.5.2
