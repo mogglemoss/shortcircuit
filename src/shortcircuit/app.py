@@ -268,7 +268,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_trip_get.setEnabled(False)
 
         # Identity row (sidebar top)
-        self.lbl_connection = QtWidgets.QLabel("not logged in")
+        self.lbl_connection = QtWidgets.QLabel("Not logged in")
 
         # Transient toast replacing the old status-bar messages
         self.lbl_toast = QtWidgets.QLabel(self)
@@ -350,6 +350,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_portrait.setScaledContents(True)
         self.lbl_portrait.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.lbl_portrait.setStyleSheet("border: 1px solid #3e4451; background-color: #282c34;")
+        # Connection state as a badge on the portrait corner, so the text
+        # line stays flush-left with the name (no floating dot).
+        self.lbl_status_badge = QtWidgets.QLabel(self.lbl_portrait)
+        self.lbl_status_badge.setFixedSize(16, 16)
+        self.lbl_status_badge.move(58, 58)
         identity_row.addWidget(self.lbl_portrait)
 
         identity_col = QtWidgets.QVBoxLayout()
@@ -1221,15 +1226,17 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.state_eve_connection["char_name"]:
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
                 self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
-            self.lbl_connection.setText("● connected")
+            self.lbl_connection.setText("Connected")
             self.lbl_connection.setStyleSheet("color: #98c379; font-size: 11px;")
+            self._set_status_badge("#98c379")
 
             self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
-            self.lbl_connection.setText("● {}".format(self.state_eve_connection["error"]))
+            self.lbl_connection.setText(self.state_eve_connection["error"])
             self.lbl_connection.setStyleSheet("color: #e06c75; font-size: 11px;")
+            self._set_status_badge("#e06c75")
             return
 
         self.pushButton_eve_login.setText("Log in with EvE")
@@ -1238,10 +1245,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.lbl_header.setText("DAYTRIPPER")
         self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
-        self.lbl_connection.setText("not logged in")
+        self.lbl_connection.setText("Not logged in")
         self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
+        self._set_status_badge("#5c6370")
 
         self._load_portrait(1)
+
+    def _set_status_badge(self, color):
+        self.lbl_status_badge.setStyleSheet(
+            "background-color: {}; border: 2px solid #21252b; border-radius: 8px;".format(color)
+        )
 
     def _update_sources_status(self):
         total_connections = 0
