@@ -177,6 +177,11 @@ class MappersDialog(QtWidgets.QDialog, Ui_MappersDialog):
     self.configs: List[MapperConfig] = [MapperConfig(**c.to_dict()) for c in configs]
     self.proxy = proxy or ""
 
+    # Match the main window's table treatment: no painted grid, zebra
+    # rows, no row numbers (they mean nothing in a config list).
+    self.tableWidget_mappers.setShowGrid(False)
+    self.tableWidget_mappers.setAlternatingRowColors(True)
+    self.tableWidget_mappers.verticalHeader().setVisible(False)
     self.tableWidget_mappers.setColumnCount(5)
     self.tableWidget_mappers.setHorizontalHeaderLabels([
       "Enabled", "Name", "Type", "Details", "URL",

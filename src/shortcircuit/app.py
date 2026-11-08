@@ -319,6 +319,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tableWidget_path.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tableWidget_path.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tableWidget_path.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        # No painted grid: the cells' own padding and the row separators
+        # from the stylesheet do the structural work.
+        self.tableWidget_path.setShowGrid(False)
+        self.tableWidget_path.setAlternatingRowColors(True)
         self.lineEdit_short_format = QtWidgets.QLineEdit()
         self.lineEdit_short_format.setReadOnly(True)
         self.lineEdit_short_format.setPlaceholderText("Short format route (click to copy)")
@@ -518,37 +522,43 @@ class MainWindow(QtWidgets.QMainWindow):
     QPushButton#pushButton_trip_get { background-color: #b38600; color: #1b1e23; }
     QPushButton#pushButton_trip_get:hover { background-color: #e6ac00; }
     
-    /* Table */
+    /* Table: no vertical gridlines (cells breathe instead of touching
+       rules), zebra rows, generous cell padding, padded headers. */
     QTableWidget {
         background-color: #21252b;
+        alternate-background-color: #242933;
         border: 1px solid #3e4451;
-        gridline-color: #2c313a;
         selection-background-color: #3e4451;
         font-size: 13px;
     }
     QTableWidget::item {
-        padding: 4px 8px;
+        padding: 6px 12px;
+        border: none;
+        border-bottom: 1px solid #2c313a;
     }
     QHeaderView {
         background-color: #282c34;
     }
-    QHeaderView::section:horizontal { 
-        background-color: #282c34; 
-        padding: 6px; 
-        border: none; 
+    QHeaderView::section:horizontal {
+        background-color: #282c34;
+        padding: 8px 12px;
+        border: none;
         border-bottom: 1px solid #3e4451;
         font-weight: bold;
         color: #abb2bf;
     }
     QHeaderView::section:vertical {
-        padding: 0px;
+        background-color: #21252b;
+        padding: 0 10px;
         border: none;
-        border-right: 1px solid #3e4451;
-        color: #abb2bf;
+        border-bottom: 1px solid #2c313a;
+        color: #5c6370;
+        font-size: 11px;
     }
     QTableCornerButton::section {
         background-color: #282c34;
-        border: 1px solid #3e4451;
+        border: none;
+        border-bottom: 1px solid #3e4451;
     }
     
     /* Scrollbar */
@@ -1204,9 +1214,11 @@ class MainWindow(QtWidgets.QMainWindow):
             source_color = self.get_system_class_color(route[0]["class"]).name()
             dest_color = self.get_system_class_color(route[-1]["class"]).name()
 
+            jumps = route_length - 1
             self.label_status.setText(
-                '<span style="font-size: 20pt; color: #e5c07b">{}</span> JUMPS FROM <span style="color:{}">{}</span> TO <span style="color:{}">{}</span>'.format(
-                    route_length - 1,
+                '<span style="font-size: 20pt; color: #e5c07b">{}</span> {} FROM <span style="color:{}">{}</span> TO <span style="color:{}">{}</span>'.format(
+                    jumps,
+                    "JUMP" if jumps == 1 else "JUMPS",
                     source_color,
                     route[0]["name"].upper(),
                     dest_color,
