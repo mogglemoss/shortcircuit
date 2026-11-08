@@ -4,21 +4,24 @@ This test verifies that GATE type wormholes from Tripwire are properly
 recognized and added to the solar map for route calculations.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 from shortcircuit.model.tripwire import Tripwire
 from shortcircuit.model.solarmap import SolarMap, ConnectionType
 from shortcircuit.model.evedb import EveDb, WormholeSize, WormholeTimespan, WormholeMassspan
-from shortcircuit.model.connection_db import ConnectionData
 
 
 def test_gate_wormhole_is_processed():
     """Test that GATE type wormholes are not skipped and are processed as stable connections"""
-    # Create a Tripwire instance
-    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    # Create a Tripwire instance and mock the login
+    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+        mock_session = Mock()
+        mock_session.post.return_value.status_code = 200
+        mock_requests.session.return_value = mock_session
+        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Create a mock chain with a GATE type wormhole
-    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     mock_chain = {
         'wormholes': {
             '1': {
@@ -64,32 +67,38 @@ def test_gate_wormhole_is_processed():
     assert solar_map.add_connection.called, "add_connection should have been called"
     
     # Verify the connection parameters
-    conn = solar_map.add_connection.call_args[0][0]
-    system_from = conn.source_system
-    system_to = conn.dest_system
-    connection_type = conn.con_type
+    call_args = solar_map.add_connection.call_args[0]
+    system_from = call_args[0]
+    system_to = call_args[1]
+    connection_type = call_args[2]
+    wh_info = call_args[3]
     
     assert system_from == 30000142, "System from should be Jita"
     assert system_to == 30002187, "System to should be Dodixie"
     assert connection_type == ConnectionType.WORMHOLE, "Should be added as WORMHOLE type"
     
     # Check the wormhole info array
-    assert conn.sig_source == 'ABC----', "Signature in should be formatted as ABC----"
-    assert conn.code_source == 'GATE', "Wormhole code should be GATE"
-    assert conn.sig_dest == 'DEF----', "Signature out should be formatted as DEF----"
-    assert conn.code_dest == 'GATE', "Wormhole code out should be GATE (both sides are GATE)"
-    assert conn.wh_life == WormholeTimespan.STABLE, "GATE wormholes should have STABLE timespan (permanent)"
-    assert conn.wh_mass == WormholeMassspan.STABLE, "GATE wormholes should have STABLE massspan (permanent)"
-    assert conn.wh_size == WormholeSize.UNKNOWN, "GATE wormholes should have UNKNOWN size (permanent connections don't have size restrictions)"
-    assert conn.source_id == "Tripwire", "Source should be Tripwire"
+    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed] = wh_info
+    
+    assert sig_in == 'ABC----', "Signature in should be formatted as ABC----"
+    assert code_in == 'GATE', "Wormhole code should be GATE"
+    assert sig_out == 'DEF----', "Signature out should be formatted as DEF----"
+    assert code_out == 'GATE', "Wormhole code out should be GATE (both sides are GATE)"
+    assert wh_life == WormholeTimespan.STABLE, "GATE wormholes should have STABLE timespan (permanent)"
+    assert wh_mass == WormholeMassspan.STABLE, "GATE wormholes should have STABLE massspan (permanent)"
+    assert wh_size == WormholeSize.UNKNOWN, "GATE wormholes should have UNKNOWN size (permanent connections don't have size restrictions)"
 
 
 def test_regular_wormhole_respects_life_and_mass():
     """Test that regular wormholes still respect their life and mass properties"""
-    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+        mock_session = Mock()
+        mock_session.post.return_value.status_code = 200
+        mock_requests.session.return_value = mock_session
+        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Create a mock chain with a regular critical wormhole
-    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     mock_chain = {
         'wormholes': {
             '1': {
@@ -134,13 +143,15 @@ def test_regular_wormhole_respects_life_and_mass():
     assert result == 1, f"Expected 1 connection, got {result}"
     
     # Check the wormhole info - should respect the life and mass from the wormhole data
-    conn = solar_map.add_connection.call_args[0][0]
+    call_args = solar_map.add_connection.call_args[0]
+    wh_info = call_args[3]
+    [sig_in, code_in, sig_out, code_out, wh_size, wh_life, wh_mass, time_elapsed] = wh_info
     
-    assert conn.code_source == 'C140', "Wormhole type should be C140"
-    assert conn.code_dest == 'K162', "Wormhole code out should be K162"
-    assert conn.wh_life == WormholeTimespan.CRITICAL, "Should have CRITICAL timespan from wormhole data"
-    assert conn.wh_mass == WormholeMassspan.DESTAB, "Should have DESTAB massspan from wormhole data"
-    assert conn.wh_size == WormholeSize.SMALL, "Size should be determined by wormhole code"
+    assert code_in == 'C140', "Wormhole type should be C140"
+    assert code_out == 'K162', "Wormhole code out should be K162"
+    assert wh_life == WormholeTimespan.CRITICAL, "Should have CRITICAL timespan from wormhole data"
+    assert wh_mass == WormholeMassspan.DESTAB, "Should have DESTAB massspan from wormhole data"
+    assert wh_size == WormholeSize.SMALL, "Size should be determined by wormhole code"
 
 
 def test_gate_wormhole_in_route_calculation():
@@ -150,26 +161,24 @@ def test_gate_wormhole_in_route_calculation():
     
     # Add a GATE wormhole connection (simulating what Tripwire would add)
     solar_map.add_connection(
-        ConnectionData(
-            source_id="Test",
-            source_system=eve_db.name2id("Jita"),
-            dest_system=eve_db.name2id("Dodixie"),
-            con_type=ConnectionType.WORMHOLE,
-            sig_source="ABC-123",
-            code_source="GATE",
-            sig_dest="DEF-456",
-            code_dest="----",
-            wh_size=WormholeSize.LARGE,
-            wh_life=WormholeTimespan.STABLE,
-            wh_mass=WormholeMassspan.STABLE,
-            time_elapsed=0.5,
-            source_name="Test"
-        )
+        eve_db.name2id("Jita"),
+        eve_db.name2id("Dodixie"),
+        ConnectionType.WORMHOLE,
+        [
+            "ABC-123",
+            "GATE",
+            "DEF-456",
+            "----",
+            WormholeSize.LARGE,
+            WormholeTimespan.STABLE,
+            WormholeMassspan.STABLE,
+            0.5,  # Updated 0.5 hours ago
+        ],
     )
     
     # Calculate a route that should use the GATE wormhole
     from shortcircuit.model.evedb import SpaceType
-    path = solar_map.shortest_path(
+    path, _ = solar_map.shortest_path(
         eve_db.name2id("Jita"),
         eve_db.name2id("Dodixie"),
         {
@@ -200,7 +209,11 @@ def test_gate_wormhole_in_route_calculation():
 
 def test_connection_failure_returns_negative_one():
     """Test that connection/auth failures return -1 for proper UI error display"""
-    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+        mock_session = Mock()
+        mock_session.post.return_value.status_code = 200
+        mock_requests.session.return_value = mock_session
+        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Mock get_chain to return False (connection failure)
     solar_map = Mock(spec=SolarMap)
@@ -215,10 +228,14 @@ def test_connection_failure_returns_negative_one():
 
 def test_connection_failure_preserves_existing_chain():
     """Test that connection failures preserve existing navigation data"""
-    tripwire = Tripwire("test_user", "test_pass", "http://test.url")
+    with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+        mock_session = Mock()
+        mock_session.post.return_value.status_code = 200
+        mock_requests.session.return_value = mock_session
+        tripwire = Tripwire("test_user", "test_pass", "http://test.url")
     
     # Set up initial chain data
-    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     initial_chain = {
         'esi': {},
         'sync': 'test',
@@ -245,9 +262,8 @@ def test_connection_failure_preserves_existing_chain():
     }
     tripwire.chain = initial_chain
     
-    # Mock _get_chain_task to return False (connection failure)
-    with patch.object(tripwire, '_get_chain_task', new_callable=AsyncMock) as mock_task:
-        mock_task.return_value = False
+    # Mock fetch_api_refresh to return None (connection failure)
+    with patch.object(tripwire, 'fetch_api_refresh', return_value=None):
         result = tripwire.get_chain()
     
     # Should return False on failure

@@ -552,14 +552,28 @@ class EveDb(metaclass=Singleton):
     return sys_class
 
   def system_type(self, system_id: int) -> SpaceType:
+    """Kind of space `system_id` is in.
+
+    Pochven (▲) and Zarzakh (Z) are -1.0 security with no CONCORD, so they
+    count as null-sec. Every Anoikis system is classed C<n> (C?? when its
+    class is unknown), which makes it wormhole space.
+    """
     db_class = self.system_desc[system_id]['class']
 
-    return {
-      'HS': SpaceType.HS,
-      'LS': SpaceType.LS,
-      'NS': SpaceType.NS,
-      'WH': SpaceType.WH,
-    }.get(db_class, SpaceType.NS)
+    match db_class:
+      case 'HS':
+        return SpaceType.HS
+      case 'LS':
+        return SpaceType.LS
+      case 'NS' | '▲' | 'Z':
+        return SpaceType.NS
+      case _ if db_class.startswith('C'):
+        return SpaceType.WH
+      case _:
+        # Abyssal, void and other instanced regions are unreachable on the map.
+        raise ValueError(
+          'system {} of class {!r} has no space type'.format(system_id, db_class)
+        )
 
   def get_whsize_by_system(self, source_id: int, dest_id: int) -> WormholeSize:
     source_class = self.get_class(source_id)

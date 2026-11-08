@@ -3,16 +3,26 @@
 ################################################################################
 ## Form generated from reading UI file 'gui_main.ui'
 ##
-## Created by: Qt User Interface Compiler version 5.15.2
+## Created by: Qt User Interface Compiler version 6.11.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import *
-from PySide6.QtGui import *
-from PySide6.QtWidgets import *
-
-from  . import resources_rc
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
+    QDoubleSpinBox, QFrame, QGridLayout, QGroupBox,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMenuBar,
+    QPushButton, QSizePolicy, QSpacerItem, QSpinBox,
+    QStatusBar, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget)
+from . import resources_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -20,11 +30,11 @@ class Ui_MainWindow(object):
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(858, 905)
         font = QFont()
-        font.setFamily(u"Segoe UI")
+        font.setFamilies([u"Segoe UI"])
         font.setPointSize(9)
         MainWindow.setFont(font)
         icon = QIcon()
-        icon.addFile(u":/images/app_icon.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon.addFile(u":/images/app_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         MainWindow.setWindowIcon(icon)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -40,7 +50,7 @@ class Ui_MainWindow(object):
         self.gridLayout.setObjectName(u"gridLayout")
         self.lineEdit_source = QLineEdit(self.groupBox)
         self.lineEdit_source.setObjectName(u"lineEdit_source")
-        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.lineEdit_source.sizePolicy().hasHeightForWidth())
@@ -71,7 +81,7 @@ class Ui_MainWindow(object):
         self.pushButton_player_location.setObjectName(u"pushButton_player_location")
         self.pushButton_player_location.setEnabled(False)
         icon1 = QIcon()
-        icon1.addFile(u":/images/crest_logo.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(u":/images/crest_logo.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.pushButton_player_location.setIcon(icon1)
 
         self.gridLayout.addWidget(self.pushButton_player_location, 1, 2, 1, 1)
@@ -97,8 +107,8 @@ class Ui_MainWindow(object):
 
         self.line = QFrame(self.groupBox)
         self.line.setObjectName(u"line")
-        self.line.setFrameShape(QFrame.HLine)
-        self.line.setFrameShadow(QFrame.Sunken)
+        self.line.setFrameShape(QFrame.Shape.HLine)
+        self.line.setFrameShadow(QFrame.Shadow.Sunken)
 
         self.verticalLayout_2.addWidget(self.line)
 
@@ -156,13 +166,13 @@ class Ui_MainWindow(object):
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.pushButton_trip_get = QPushButton(self.groupBox__options)
         self.pushButton_trip_get.setObjectName(u"pushButton_trip_get")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
         sizePolicy1.setHeightForWidth(self.pushButton_trip_get.sizePolicy().hasHeightForWidth())
         self.pushButton_trip_get.setSizePolicy(sizePolicy1)
         icon2 = QIcon()
-        icon2.addFile(u":/images/tripwire_logo.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon2.addFile(u":/images/tripwire_logo.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.pushButton_trip_get.setIcon(icon2)
         self.pushButton_trip_get.setIconSize(QSize(24, 24))
 
@@ -174,7 +184,7 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.pushButton_eve_login.sizePolicy().hasHeightForWidth())
         self.pushButton_eve_login.setSizePolicy(sizePolicy1)
         icon3 = QIcon()
-        icon3.addFile(u":/images/eve_logo.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon3.addFile(u":/images/eve_logo.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.pushButton_eve_login.setIcon(icon3)
         self.pushButton_eve_login.setIconSize(QSize(24, 24))
 
@@ -182,18 +192,14 @@ class Ui_MainWindow(object):
 
         self.pushButton_trip_config = QPushButton(self.groupBox__options)
         self.pushButton_trip_config.setObjectName(u"pushButton_trip_config")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.pushButton_trip_config.sizePolicy().hasHeightForWidth())
-        self.pushButton_trip_config.setSizePolicy(sizePolicy2)
-        self.pushButton_trip_config.setMinimumSize(QSize(0, 0))
-        self.pushButton_trip_config.setMaximumSize(QSize(16777215, 16777215))
+        sizePolicy1.setHeightForWidth(self.pushButton_trip_config.sizePolicy().hasHeightForWidth())
+        self.pushButton_trip_config.setSizePolicy(sizePolicy1)
         icon4 = QIcon()
-        icon4.addFile(u":/images/config_icon.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon4.addFile(u":/images/config_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.pushButton_trip_config.setIcon(icon4)
+        self.pushButton_trip_config.setIconSize(QSize(24, 24))
 
-        self.gridLayout_4.addWidget(self.pushButton_trip_config, 1, 1, 1, 1)
+        self.gridLayout_4.addWidget(self.pushButton_trip_config, 2, 0, 1, 1)
 
 
         self.verticalLayout_3.addLayout(self.gridLayout_4)
@@ -244,7 +250,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_6 = QHBoxLayout()
         self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_6.addItem(self.horizontalSpacer)
 
@@ -288,11 +294,11 @@ class Ui_MainWindow(object):
 
         self.label_6 = QLabel(self.groupBox_security)
         self.label_6.setObjectName(u"label_6")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.label_6.sizePolicy().hasHeightForWidth())
-        self.label_6.setSizePolicy(sizePolicy3)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.label_6.sizePolicy().hasHeightForWidth())
+        self.label_6.setSizePolicy(sizePolicy2)
 
         self.gridLayout_2.addWidget(self.label_6, 2, 0, 1, 1)
 
@@ -308,23 +314,23 @@ class Ui_MainWindow(object):
 
         self.label_10 = QLabel(self.groupBox_security)
         self.label_10.setObjectName(u"label_10")
-        sizePolicy3.setHeightForWidth(self.label_10.sizePolicy().hasHeightForWidth())
-        self.label_10.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.label_10.sizePolicy().hasHeightForWidth())
+        self.label_10.setSizePolicy(sizePolicy2)
         self.label_10.setOpenExternalLinks(True)
 
         self.gridLayout_2.addWidget(self.label_10, 2, 4, 1, 1)
 
         self.label_7 = QLabel(self.groupBox_security)
         self.label_7.setObjectName(u"label_7")
-        sizePolicy3.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
-        self.label_7.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
+        self.label_7.setSizePolicy(sizePolicy2)
 
         self.gridLayout_2.addWidget(self.label_7, 1, 0, 1, 1)
 
         self.label_8 = QLabel(self.groupBox_security)
         self.label_8.setObjectName(u"label_8")
-        sizePolicy3.setHeightForWidth(self.label_8.sizePolicy().hasHeightForWidth())
-        self.label_8.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.label_8.sizePolicy().hasHeightForWidth())
+        self.label_8.setSizePolicy(sizePolicy2)
 
         self.gridLayout_2.addWidget(self.label_8, 1, 2, 1, 1)
 
@@ -341,8 +347,8 @@ class Ui_MainWindow(object):
 
         self.label_9 = QLabel(self.groupBox_security)
         self.label_9.setObjectName(u"label_9")
-        sizePolicy3.setHeightForWidth(self.label_9.sizePolicy().hasHeightForWidth())
-        self.label_9.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.label_9.sizePolicy().hasHeightForWidth())
+        self.label_9.setSizePolicy(sizePolicy2)
 
         self.gridLayout_2.addWidget(self.label_9, 2, 2, 1, 1)
 
@@ -370,29 +376,32 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.label_3 = QLabel(self.groupBox_avoidance)
         self.label_3.setObjectName(u"label_3")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.label_3.sizePolicy().hasHeightForWidth())
-        self.label_3.setSizePolicy(sizePolicy4)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.label_3.sizePolicy().hasHeightForWidth())
+        self.label_3.setSizePolicy(sizePolicy3)
 
         self.horizontalLayout_2.addWidget(self.label_3)
 
         self.lineEdit_system_avoid_name = QLineEdit(self.groupBox_avoidance)
         self.lineEdit_system_avoid_name.setObjectName(u"lineEdit_system_avoid_name")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.lineEdit_system_avoid_name.sizePolicy().hasHeightForWidth())
-        self.lineEdit_system_avoid_name.setSizePolicy(sizePolicy5)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.lineEdit_system_avoid_name.sizePolicy().hasHeightForWidth())
+        self.lineEdit_system_avoid_name.setSizePolicy(sizePolicy4)
         self.lineEdit_system_avoid_name.setMaxLength(32)
 
         self.horizontalLayout_2.addWidget(self.lineEdit_system_avoid_name)
 
         self.pushButton_system_avoid_add = QPushButton(self.groupBox_avoidance)
         self.pushButton_system_avoid_add.setObjectName(u"pushButton_system_avoid_add")
-        sizePolicy2.setHeightForWidth(self.pushButton_system_avoid_add.sizePolicy().hasHeightForWidth())
-        self.pushButton_system_avoid_add.setSizePolicy(sizePolicy2)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.pushButton_system_avoid_add.sizePolicy().hasHeightForWidth())
+        self.pushButton_system_avoid_add.setSizePolicy(sizePolicy5)
         self.pushButton_system_avoid_add.setMinimumSize(QSize(32, 0))
         self.pushButton_system_avoid_add.setMaximumSize(QSize(32, 16777215))
         self.pushButton_system_avoid_add.setLayoutDirection(Qt.LeftToRight)
@@ -406,23 +415,23 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
         self.label_11 = QLabel(self.groupBox_avoidance)
         self.label_11.setObjectName(u"label_11")
-        sizePolicy4.setHeightForWidth(self.label_11.sizePolicy().hasHeightForWidth())
-        self.label_11.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.label_11.sizePolicy().hasHeightForWidth())
+        self.label_11.setSizePolicy(sizePolicy3)
 
         self.horizontalLayout_5.addWidget(self.label_11)
 
         self.lineEdit_region_avoid_name = QLineEdit(self.groupBox_avoidance)
         self.lineEdit_region_avoid_name.setObjectName(u"lineEdit_region_avoid_name")
-        sizePolicy5.setHeightForWidth(self.lineEdit_region_avoid_name.sizePolicy().hasHeightForWidth())
-        self.lineEdit_region_avoid_name.setSizePolicy(sizePolicy5)
+        sizePolicy4.setHeightForWidth(self.lineEdit_region_avoid_name.sizePolicy().hasHeightForWidth())
+        self.lineEdit_region_avoid_name.setSizePolicy(sizePolicy4)
         self.lineEdit_region_avoid_name.setMaxLength(32)
 
         self.horizontalLayout_5.addWidget(self.lineEdit_region_avoid_name)
 
         self.pushButton_region_avoid_add = QPushButton(self.groupBox_avoidance)
         self.pushButton_region_avoid_add.setObjectName(u"pushButton_region_avoid_add")
-        sizePolicy2.setHeightForWidth(self.pushButton_region_avoid_add.sizePolicy().hasHeightForWidth())
-        self.pushButton_region_avoid_add.setSizePolicy(sizePolicy2)
+        sizePolicy5.setHeightForWidth(self.pushButton_region_avoid_add.sizePolicy().hasHeightForWidth())
+        self.pushButton_region_avoid_add.setSizePolicy(sizePolicy5)
         self.pushButton_region_avoid_add.setMinimumSize(QSize(32, 0))
         self.pushButton_region_avoid_add.setMaximumSize(QSize(32, 16777215))
         self.pushButton_region_avoid_add.setLayoutDirection(Qt.LeftToRight)
@@ -448,7 +457,7 @@ class Ui_MainWindow(object):
         self.pushButton_avoid_clear = QPushButton(self.groupBox_avoidance)
         self.pushButton_avoid_clear.setObjectName(u"pushButton_avoid_clear")
         icon5 = QIcon()
-        icon5.addFile(u":/images/delete_icon.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon5.addFile(u":/images/delete_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.pushButton_avoid_clear.setIcon(icon5)
 
         self.horizontalLayout_3.addWidget(self.pushButton_avoid_clear)
@@ -495,9 +504,9 @@ class Ui_MainWindow(object):
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"FC, please help!", None))
         self.lineEdit_short_format.setPlaceholderText(QCoreApplication.translate("MainWindow", u"For quick copy-pasting of info", None))
         self.groupBox__options.setTitle(QCoreApplication.translate("MainWindow", u"Options", None))
-        self.pushButton_trip_get.setText(QCoreApplication.translate("MainWindow", u"Get Tripwire Chain", None))
+        self.pushButton_trip_get.setText(QCoreApplication.translate("MainWindow", u"Fetch Mappers", None))
         self.pushButton_eve_login.setText(QCoreApplication.translate("MainWindow", u"Log in with EvE", None))
-        self.pushButton_trip_config.setText(QCoreApplication.translate("MainWindow", u"Tripwire", None))
+        self.pushButton_trip_config.setText(QCoreApplication.translate("MainWindow", u"Mappers\u2026", None))
         self.groupBox_restrictions.setTitle(QCoreApplication.translate("MainWindow", u"Restrictions", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Wormhole size at least:", None))
         self.comboBox_size.setItemText(0, QCoreApplication.translate("MainWindow", u"Small [All]", None))

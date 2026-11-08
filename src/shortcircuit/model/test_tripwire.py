@@ -8,8 +8,8 @@ Tests the core functionality of Tripwire integration including:
 - Edge cases and validation
 """
 
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 import pytest
 
 from shortcircuit.model.tripwire import (
@@ -67,7 +67,11 @@ class TestParentSiblingKeys:
     
     def setup_method(self):
         """Set up test fixtures"""
-        self.tripwire = Tripwire("test", "test", "http://test.url")
+        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+            mock_session = Mock()
+            mock_session.post.return_value.status_code = 200
+            mock_requests.session.return_value = mock_session
+            self.tripwire = Tripwire("test", "test", "http://test.url")
     
     def test_parent_initial(self):
         """Test parent='initial' returns correct keys"""
@@ -139,8 +143,12 @@ class TestWormholeProperties:
     
     def setup_method(self):
         """Set up test fixtures"""
-        self.tripwire = Tripwire("test", "test", "http://test.url")
-        self.tripwire.eve_db = Mock(spec=EveDb)
+        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+            mock_session = Mock()
+            mock_session.post.return_value.status_code = 200
+            mock_requests.session.return_value = mock_session
+            self.tripwire = Tripwire("test", "test", "http://test.url")
+            self.tripwire.eve_db = Mock(spec=EveDb)
     
     def test_gate_properties(self):
         """Test GATE type returns stable properties"""
@@ -245,9 +253,13 @@ class TestProcessWormhole:
     
     def setup_method(self):
         """Set up test fixtures"""
-        self.tripwire = Tripwire("test", "test", "http://test.url")
-        self.tripwire.eve_db = Mock(spec=EveDb)
-        self.solar_map = Mock(spec=SolarMap)
+        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+            mock_session = Mock()
+            mock_session.post.return_value.status_code = 200
+            mock_requests.session.return_value = mock_session
+            self.tripwire = Tripwire("test", "test", "http://test.url")
+            self.tripwire.eve_db = Mock(spec=EveDb)
+            self.solar_map = Mock(spec=SolarMap)
     
     def test_rejects_empty_signatures_list(self):
         """Test that empty signatures list is rejected"""
@@ -366,7 +378,7 @@ class TestProcessWormhole:
     
     def test_processes_valid_wormhole(self):
         """Test that valid wormhole is processed and added to map"""
-        current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
         self.tripwire.chain = {
             'signatures': {
                 '100': {'systemID': '30000142', 'signatureID': 'ABC-123', 'modifiedTime': current_time},
@@ -423,7 +435,11 @@ class TestEmptyChainHandling:
     
     def setup_method(self):
         """Set up test fixtures"""
-        self.tripwire = Tripwire("test", "test", "http://test.url")
+        with patch('shortcircuit.model.tripwire.requests') as mock_requests:
+            mock_session = Mock()
+            mock_session.post.return_value.status_code = 200
+            mock_requests.session.return_value = mock_session
+            self.tripwire = Tripwire("test", "test", "http://test.url")
     
     def test_empty_wormholes_list(self):
         """Test that empty wormholes list returns 0 connections"""

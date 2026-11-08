@@ -31,6 +31,7 @@ HTML = '''
     <p>If you see this message then it means you should be logged in with ESI. You may close this window and return to the application.</p>
   </div>
 </div>
+
 </body>
 </html>
 '''

@@ -1,17 +1,48 @@
 # navigation.py
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Callable, Dict, List
 
 from .evedb import EveDb, SystemDescription, WormholeMassspan, WormholeSize, WormholeTimespan
+from .evescout import EveScout
+from .mapper_base import MapperSource
+from .mapper_config import TYPE_EVESCOUT, TYPE_TRIPWIRE, MapperConfig
+from .mapper_registry import MapperRegistry
 from .solarmap import ConnectionType, SolarMap
+from .tripwire import Tripwire
 
 if TYPE_CHECKING:
   from shortcircuit.app import MainWindow
 
 
+def _build_tripwire(cfg: MapperConfig) -> MapperSource:
+  return Tripwire(
+    username=cfg.user,
+    password=cfg.password,
+    url=cfg.url,
+    name=cfg.name,
+  )
+
+
+def _build_evescout(cfg: MapperConfig) -> MapperSource:
+  # Eve Scout takes an optional URL override; fall back to the client default.
+  if cfg.url:
+    return EveScout(url=cfg.url, name=cfg.name)
+  return EveScout(name=cfg.name)
+
+
+MAPPER_BUILDERS: Dict[str, Callable[[MapperConfig], MapperSource]] = {
+  TYPE_TRIPWIRE: _build_tripwire,
+  TYPE_EVESCOUT: _build_evescout,
+}
+
+
 class Navigation:
   """
-  Navigation
+  Navigation - handles pathfinding and wormhole mapper integration.
+
+  Owns the SolarMap and a MapperRegistry. setup_mappers() rebuilds the
+  registry from the current list of MapperConfig entries exposed by the
+  host app, so multi-instance / mixed-type setups come for free.
   """
 
   def __init__(self, app_obj: 'MainWindow', eve_db: EveDb):
@@ -19,49 +50,52 @@ class Navigation:
     self.eve_db = eve_db
 
     self.solar_map = SolarMap(self.eve_db)
-    
-    # Keep a reference to the Tripwire instance for cookie management
-    self.tripwire_instance = None
+    self.mapper_registry = MapperRegistry()
 
   def reset_chain(self):
+    """Reset the solar map to its initial state."""
     self.solar_map = SolarMap(self.eve_db)
     return self.solar_map
 
   def setup_mappers(self):
-    """Configures the map sources based on current app settings."""
-    from shortcircuit.model.source_manager import SourceManager
-    from shortcircuit.model.mapsource import SourceType
-    from shortcircuit.model.tripwire_source import TripwireSource
-    from shortcircuit.model.pathfinder_source import PathfinderSource
-    from shortcircuit.model.evescout_source import EveScoutSource
-    from shortcircuit.model.wanderer_source import WandererSource
+    """
+    Rebuild the registry from app_obj.mapper_configs.
 
-    sm = SourceManager()
+    Disabled configs and unknown types are skipped (unknown types are
+    logged but non-fatal, so a settings file from a newer version won't
+    crash an older binary). Instantiation errors on one config don't
+    prevent the rest from being registered.
+    """
+    from .logger import Logger
 
-    # Register source classes if not already registered
-    if not sm._registry:
-      sm.register_source_class(SourceType.TRIPWIRE, TripwireSource)
-      sm.register_source_class(SourceType.PATHFINDER, PathfinderSource)
-      sm.register_source_class(SourceType.EVESCOUT, EveScoutSource)
-      sm.register_source_class(SourceType.WANDERER, WandererSource)
+    self.mapper_registry.clear()
 
-    sm.load_configuration()
+    configs: List[MapperConfig] = getattr(self.app_obj, 'mapper_configs', []) or []
+    for cfg in configs:
+      if not cfg.enabled:
+        continue
+      builder = MAPPER_BUILDERS.get(cfg.type)
+      if builder is None:
+        Logger.warning(f"Unknown mapper type '{cfg.type}' for '{cfg.name}', skipping")
+        continue
+      try:
+        source = builder(cfg)
+      except Exception as e:
+        Logger.error(f"Failed to build mapper '{cfg.name}' (type={cfg.type}): {e}")
+        continue
+      self.mapper_registry.register(source)
 
-    self.tripwire_instance = None
-    for source in sm.get_enabled_sources():
-      if source.type == SourceType.TRIPWIRE:
-        self.tripwire_instance = source._tripwire
-        break
-
-  def augment_map(self, solar_map: SolarMap):
-    from shortcircuit.model.source_manager import SourceManager
-    sm = SourceManager()
-    return sm.fetch_all(solar_map)
-
-  def augment_source(self, solar_map: SolarMap, source_id: str):
-    from shortcircuit.model.source_manager import SourceManager
-    sm = SourceManager()
-    return sm.fetch_one(source_id, solar_map)
+  def augment_map(self, solar_map: SolarMap) -> Dict[str, int]:
+    """
+    Augment the solar map from all registered mapper sources.
+    
+    Args:
+      solar_map: The solar map to augment
+      
+    Returns:
+      Dictionary mapping source names to connection counts
+    """
+    return self.mapper_registry.augment_map(solar_map)
 
   # FIXME refactor neighbor info - weights
   @staticmethod
@@ -73,16 +107,8 @@ class Navigation:
       return "Jump gate"
 
     if weight[0] == ConnectionType.WORMHOLE:
-      data = weight[1]
-      wh_sig = data[0]
-      wh_code = data[1]
-      instruction = "Jump wormhole\n{} [{}]".format(wh_sig, wh_code)
-      
-      if len(data) > 6:
-        source = data[6]
-        if source:
-          instruction += " [{}]".format(source)
-      return instruction
+      wh_sig, wh_code = weight[1][0], weight[1][1]
+      return "Jump wormhole\n{} [{}]".format(wh_sig, wh_code)
 
     return "Instructions unclear, initiate self-destruct"
 
@@ -95,15 +121,10 @@ class Navigation:
     if weight_back[0] != ConnectionType.WORMHOLE:
       return
 
-    data = weight_back[1]
-    wh_sig = data[0]
-    wh_code = data[1]
-    wh_size = data[2]
-    wh_life = data[3]
-    wh_mass = data[4]
-    time_elapsed = data[5]
-    source_name = data[6] if len(data) > 6 else None
-
+    info = weight_back[1]
+    wh_sig, wh_code = info[0], info[1]
+    wh_size, wh_life, wh_mass, time_elapsed = info[2], info[3], info[4], info[5]
+    sources = info[6] if len(info) >= 7 else []
     # Wormhole size
     wh_size_text = "Unknown"
     if wh_size == WormholeSize.SMALL:
@@ -132,16 +153,15 @@ class Navigation:
       wh_mass_text = "Critical"
 
     # Return signature
-    info_text = "Return sig: {0} [{1}], Updated: {5}h ago\nSize: {2}, Life: {3}, Mass: {4}".format(
+    base = "Return sig: {0} [{1}], Updated: {5}h ago\nSize: {2}, Life: {3}, Mass: {4}".format(
       wh_sig, wh_code, wh_size_text, wh_life_text, wh_mass_text, time_elapsed
     )
-
-    if source_name:
-      info_text += "\nSource: {}".format(source_name)
-    return info_text
+    if sources:
+      base += "\nReported by: {}".format(", ".join(sources))
+    return base
 
   def route(self, source: int, destination: int):
-    path = self.solar_map.shortest_path(
+    path, path_edges = self.solar_map.shortest_path(
       source,
       destination,
       self.app_obj.get_restrictions(),
@@ -154,10 +174,7 @@ class Navigation:
         weight = None
         weight_back = None
       else:
-        source = self.solar_map.get_system(x)
-        dest = self.solar_map.get_system(path[idx + 1])
-        weight = source.get_weight(dest)
-        weight_back = dest.get_weight(source)
+        weight, weight_back = path_edges[idx]
 
       route_step = self.eve_db.system_desc[x]
       route_step['path_action'] = Navigation._get_instructions(weight)
