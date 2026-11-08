@@ -158,16 +158,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # Read stored settings
         self.read_settings()
 
-        self.status_sources_widget = ClickableLabel()
-        self.status_sources_widget.setContentsMargins(5, 0, 5, 0)
-        self.status_sources_widget.setToolTip("Click to configure mappers")
         self.status_sources_widget.clicked.connect(self.btn_trip_config_clicked)
-        self.statusBar().addPermanentWidget(self.status_sources_widget, 0)
         self._update_sources_status()
-
-        self.status_eve_connection = QtWidgets.QLabel()
-        self.status_eve_connection.setContentsMargins(5, 0, 5, 0)
-        self.statusBar().addPermanentWidget(self.status_eve_connection, 0)
         self._status_eve_connection_update()
 
         # Icons
@@ -239,7 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Navigation
         self.pushButton_eve_login = QtWidgets.QPushButton("Log in with EvE")
         self.pushButton_player_location = QtWidgets.QPushButton("◎")
-        self.pushButton_player_location.setFixedWidth(36)
+        self.pushButton_player_location.setFixedSize(42, 42)
         self.pushButton_player_location.setToolTip(
             "Use my current location as the source (requires EVE login)"
         )
@@ -258,17 +250,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lineEdit_destination = QtWidgets.QLineEdit()
         self.lineEdit_destination.setPlaceholderText("Destination system")
 
-        self.pushButton_swap = QtWidgets.QPushButton("↕")
-        self.pushButton_swap.setFixedWidth(36)
+        self.pushButton_swap = QtWidgets.QPushButton("⇄")
+        self.pushButton_swap.setFixedSize(42, 42)
         self.pushButton_swap.setToolTip("Swap source and destination")
 
         self.pushButton_find_path = QtWidgets.QPushButton("Find path")
+        self.pushButton_find_path.setMinimumHeight(42)
         self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
+        self.pushButton_reset.setMinimumHeight(42)
 
-        # Mappers
-        self.pushButton_trip_config = QtWidgets.QPushButton("Mappers…")
+        # Mappers: the status pill is both the health display and the entry
+        # point to the Mappers dialog (there is no separate config button).
+        self.status_sources_widget = ClickableLabel()
+        self.status_sources_widget.setObjectName("status_pill")
+        self.status_sources_widget.setToolTip("Click to configure mappers")
         self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Mappers")
         self.pushButton_trip_get.setEnabled(False)
+
+        # Identity row (sidebar top)
+        self.lbl_connection = QtWidgets.QLabel("not logged in")
+
+        # Transient toast replacing the old status-bar messages
+        self.lbl_toast = QtWidgets.QLabel(self)
+        self.lbl_toast.setObjectName("toast")
+        self.lbl_toast.hide()
 
         # Restrictions
         self.comboBox_size = QtWidgets.QComboBox()
@@ -336,25 +341,30 @@ class MainWindow(QtWidgets.QMainWindow):
         sidebar_layout.setContentsMargins(15, 15, 15, 15)
         sidebar_layout.setSpacing(15)
 
-        # Portrait
+        # Identity row: compact portrait + name + connection state. This is
+        # the EVE connection status display — there is no status bar.
+        identity_row = QtWidgets.QHBoxLayout()
+        identity_row.setSpacing(12)
         self.lbl_portrait = QtWidgets.QLabel()
-        self.lbl_portrait.setFixedSize(128, 128)
+        self.lbl_portrait.setFixedSize(72, 72)
         self.lbl_portrait.setScaledContents(True)
         self.lbl_portrait.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.lbl_portrait.setStyleSheet("border: 1px solid #3e4451; background-color: #282c34;")
-        sidebar_layout.addWidget(self.lbl_portrait, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
+        identity_row.addWidget(self.lbl_portrait)
 
-        # Header
+        identity_col = QtWidgets.QVBoxLayout()
+        identity_col.setSpacing(3)
         lbl_header = QtWidgets.QLabel("DAYTRIPPER")
         lbl_header.setObjectName("sidebar_header")
-        lbl_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        sidebar_layout.addWidget(lbl_header)
+        identity_col.addWidget(lbl_header)
         self.lbl_header = lbl_header
+        self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
+        identity_col.addWidget(self.lbl_connection)
+        identity_row.addLayout(identity_col)
+        identity_row.addStretch()
+        sidebar_layout.addLayout(identity_row)
 
-        # 1. Navigation Group
-        sidebar_layout.addWidget(self._setup_navigation_group())
-
-        # 2. Restrictions Group
+        # Restrictions Group (Navigation lives in the route bar, not here)
         sidebar_layout.addWidget(self._setup_restrictions_group())
 
         # 3. Security & Avoidance
@@ -371,13 +381,23 @@ class MainWindow(QtWidgets.QMainWindow):
         content_layout.setContentsMargins(20, 20, 20, 20)
         content_layout.setSpacing(15)
 
-        # Top Action Bar
+        # Action row: mapper status pill (clickable -> Mappers dialog) left,
+        # fetch + login actions right.
         top_bar = QtWidgets.QHBoxLayout()
+        top_bar.addWidget(self.status_sources_widget)
         top_bar.addStretch()
-        top_bar.addWidget(self.pushButton_eve_login)
-        top_bar.addWidget(self.pushButton_trip_config)
         top_bar.addWidget(self.pushButton_trip_get)
+        top_bar.addWidget(self.pushButton_eve_login)
         content_layout.addLayout(top_bar)
+
+        # Hero route bar: the thing you touch every session.
+        content_layout.addWidget(self._setup_route_bar())
+        self.progressBar_route = QtWidgets.QProgressBar()
+        self.progressBar_route.setRange(0, 0)
+        self.progressBar_route.setTextVisible(False)
+        self.progressBar_route.setVisible(False)
+        self.progressBar_route.setFixedHeight(5)
+        content_layout.addWidget(self.progressBar_route)
 
         # Route Results Panel
         results_group = QtWidgets.QGroupBox("ROUTE RESULTS")
@@ -529,6 +549,36 @@ class MainWindow(QtWidgets.QMainWindow):
         border-radius: 7px;
     }
 
+    /* Mapper status pill (clickable) */
+    QLabel#status_pill {
+        border: 1px solid #3e4451;
+        border-radius: 14px;
+        padding: 6px 14px;
+    }
+
+    /* Hero route bar */
+    QWidget#route_bar {
+        background-color: #21252b;
+        border: 1px solid #3e4451;
+        border-radius: 6px;
+    }
+    QWidget#route_bar QLineEdit {
+        font-size: 15px;
+        padding: 9px 12px;
+    }
+    QWidget#route_bar QPushButton {
+        font-size: 15px;
+    }
+
+    /* Transient toast */
+    QLabel#toast {
+        background-color: #282c34;
+        border: 1px solid #3e4451;
+        border-radius: 4px;
+        padding: 8px 14px;
+        color: #dcdcdc;
+    }
+
     /* Popup Menus */
     QMenu {
         background-color: #21252b;
@@ -627,38 +677,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.groupBox_avoidance = group
         return group
 
-    def _setup_navigation_group(self):
-        group = QtWidgets.QGroupBox("Navigation")
-        layout = QtWidgets.QVBoxLayout(group)
+    def _setup_route_bar(self):
+        bar = QtWidgets.QWidget()
+        bar.setObjectName("route_bar")
+        layout = QtWidgets.QHBoxLayout(bar)
+        layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(10)
 
-        layout.addWidget(QtWidgets.QLabel("Source:"))
-        row_source = QtWidgets.QHBoxLayout()
-        row_source.addWidget(self.lineEdit_source)
-        row_source.addWidget(self.pushButton_player_location)
-        layout.addLayout(row_source)
+        layout.addWidget(self.pushButton_player_location)
+        layout.addWidget(self.lineEdit_source, 1)
+        layout.addWidget(self.pushButton_swap)
+        layout.addWidget(self.lineEdit_destination, 1)
+        layout.addWidget(self.pushButton_find_path)
+        layout.addWidget(self.pushButton_reset)
 
-        layout.addWidget(QtWidgets.QLabel("Destination:"))
-        row_dest = QtWidgets.QHBoxLayout()
-        row_dest.addWidget(self.lineEdit_destination)
-        row_dest.addWidget(self.pushButton_swap)
-        layout.addLayout(row_dest)
-
-        layout.addSpacing(10)
-
-        row_actions = QtWidgets.QHBoxLayout()
-        row_actions.addWidget(self.pushButton_find_path)
-        row_actions.addWidget(self.pushButton_reset)
-        layout.addLayout(row_actions)
-
-        self.progressBar_route = QtWidgets.QProgressBar()
-        self.progressBar_route.setRange(0, 0)
-        self.progressBar_route.setTextVisible(False)
-        self.progressBar_route.setVisible(False)
-        self.progressBar_route.setFixedHeight(5)
-        layout.addWidget(self.progressBar_route)
-
-        return group
+        return bar
 
     def _setup_restrictions_group(self):
         group = QtWidgets.QGroupBox("Wormhole Restrictions")
@@ -720,7 +753,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_eve_login.clicked.connect(self.btn_eve_login_clicked)
         self.pushButton_player_location.clicked.connect(self.btn_player_location_clicked)
         self.pushButton_find_path.clicked.connect(self.btn_find_path_clicked)
-        self.pushButton_trip_config.clicked.connect(self.btn_trip_config_clicked)
         self.pushButton_trip_get.clicked.connect(self.btn_trip_get_clicked)
         self.pushButton_system_avoid_add.clicked.connect(self.btn_system_avoid_add_clicked)
         self.pushButton_region_avoid_add.clicked.connect(self.btn_region_avoid_add_clicked)
@@ -889,13 +921,34 @@ class MainWindow(QtWidgets.QMainWindow):
         label.setText(message)
 
     def _avoid_message(self, message, message_type):
-        self.statusBar().showMessage(message, 5000)
+        self._toast(message)
 
     def _path_message(self, message, message_type):
         MainWindow._label_message(self.label_status, message, message_type)
 
-    def _status_eve_connection(self, message, message_type=MessageType.INFO):
-        MainWindow._label_message(self.status_eve_connection, message, message_type)
+    def _toast(self, message, duration_ms=3500):
+        """Transient bottom-right notice; replaces the old status-bar
+        showMessage calls now that there is no status bar."""
+        if not message:
+            return
+        self.lbl_toast.setText(message)
+        self.lbl_toast.adjustSize()
+        self._position_toast()
+        self.lbl_toast.show()
+        self.lbl_toast.raise_()
+        QtCore.QTimer.singleShot(duration_ms, self.lbl_toast.hide)
+
+    def _position_toast(self):
+        margin = 24
+        self.lbl_toast.move(
+            self.width() - self.lbl_toast.width() - margin,
+            self.height() - self.lbl_toast.height() - margin,
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.lbl_toast.isVisible():
+            self._position_toast()
 
     def avoidance_enabled(self) -> bool:
         return self.groupBox_avoidance.isChecked()
@@ -1125,19 +1178,19 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.lineEdit_short_format.selectAll()
         self.lineEdit_short_format.copy()
-        self.statusBar().showMessage("Copied travel info to clipboard!", 5000)
+        self._toast("Copied travel info to clipboard!")
 
     def short_format_click_btn(self):
         if not self.lineEdit_short_format.text():
             return
         self.lineEdit_short_format.selectAll()
         self.lineEdit_short_format.copy()
-        self.statusBar().showMessage("Copied travel info to clipboard!", 5000)
+        self._toast("Copied travel info to clipboard!")
 
     @QtCore.Slot()
     def copy_table_to_clipboard(self):
         if self.tableWidget_path.rowCount() == 0:
-            self.statusBar().showMessage("No route to copy!", 3000)
+            self._toast("No route to copy!")
             return
 
         text_data = []
@@ -1156,40 +1209,37 @@ class MainWindow(QtWidgets.QMainWindow):
 
         clipboard = QtGui.QGuiApplication.clipboard()
         clipboard.setText("\n".join(text_data))
-        self.statusBar().showMessage("Route table copied to clipboard!", 5000)
+        self._toast("Route table copied to clipboard!")
 
     def _status_eve_connection_update(self):
+        """The identity row IS the EVE connection status display."""
         if self.state_eve_connection["connected"]:
-            self._status_eve_connection(
-                "EVE connection: {}".format(self.state_eve_connection["char_name"]), MessageType.OK
-            )
             self.pushButton_eve_login.setText("Logout")
             self.pushButton_player_location.setEnabled(True)
             self.pushButton_set_dest.setEnabled(True)
 
-            # Update Header with Character Name
-            if hasattr(self, "lbl_header") and self.state_eve_connection["char_name"]:
+            if self.state_eve_connection["char_name"]:
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
                 self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
+            self.lbl_connection.setText("● connected")
+            self.lbl_connection.setStyleSheet("color: #98c379; font-size: 11px;")
 
             self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
-            self._status_eve_connection(
-                "EVE connection: {}".format(self.state_eve_connection["error"]), MessageType.ERROR
-            )
+            self.lbl_connection.setText("● {}".format(self.state_eve_connection["error"]))
+            self.lbl_connection.setStyleSheet("color: #e06c75; font-size: 11px;")
             return
 
-        self._status_eve_connection("EVE connection: absent")
         self.pushButton_eve_login.setText("Log in with EvE")
         self.pushButton_player_location.setEnabled(False)
         self.pushButton_set_dest.setEnabled(False)
 
-        # Reset Header
-        if hasattr(self, "lbl_header"):
-            self.lbl_header.setText("DAYTRIPPER")
-            self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
+        self.lbl_header.setText("DAYTRIPPER")
+        self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
+        self.lbl_connection.setText("not logged in")
+        self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
 
         self._load_portrait(1)
 
@@ -1210,18 +1260,19 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 total_connections += state["connections"]
 
+        mapper_word = "mapper" if active_count == 1 else "mappers"
         if has_errors:
             self.status_sources_widget.setText(
-                f"Mappers: {active_count} active · {total_connections} connections · errors"
+                f"●  {active_count} {mapper_word} · {total_connections} connections · errors   ⚙"
             )
             self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
         elif active_count > 0:
             self.status_sources_widget.setText(
-                f"Mappers: {active_count} active · {total_connections} connections"
+                f"●  {active_count} {mapper_word} · {total_connections} connections   ⚙"
             )
             self.status_sources_widget.setStyleSheet("color: #98c379;")
         else:
-            self.status_sources_widget.setText("Mappers: none enabled — click to configure")
+            self.status_sources_widget.setText("●  No mappers — click to configure   ⚙")
             self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
     @QtCore.Slot(bool, str)
@@ -1291,6 +1342,18 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.mapper_states[name] = StateMapper({"connections": count, "error": None})
         self._update_sources_status()
+
+        # Empty-state guidance: once connections are in and no route is
+        # shown yet, tell the user the one step that remains.
+        if self.tableWidget_path.rowCount() == 0:
+            loaded = sum(
+                s["connections"] for s in self.mapper_states.values() if not s["error"]
+            )
+            if loaded > 0:
+                self._path_message(
+                    "{} connections loaded — type a destination and press Find path".format(loaded),
+                    MessageType.OK,
+                )
 
         has_active = any(cfg.enabled for cfg in self.mapper_configs)
         self.pushButton_trip_get.setEnabled(has_active)
