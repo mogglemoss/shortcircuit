@@ -229,8 +229,6 @@ class MainWindow(QtWidgets.QMainWindow):
         Instantiates all UI widgets programmatically, replacing the old .ui file.
         """
         # Navigation
-        self.pushButton_eve_login = QtWidgets.QPushButton("Log in with EvE")
-        self.pushButton_eve_login.setObjectName("pushButton_eve_login")
         self.pushButton_player_location = QtWidgets.QPushButton("◎")
         self.pushButton_player_location.setFixedSize(42, 42)
         self.pushButton_player_location.setToolTip(
@@ -275,8 +273,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_trip_get.setObjectName("pushButton_trip_get")
         self.pushButton_trip_get.setEnabled(False)
 
-        # Identity row (sidebar top)
-        self.lbl_connection = QtWidgets.QLabel("Not logged in")
+        # Identity row (sidebar top). The identity block owns the whole EVE
+        # session: the connection line (and, when logged out, the portrait)
+        # is the login/logout control — there is no separate button.
+        self.lbl_connection = ClickableLabel()
 
         # Transient toast replacing the old status-bar messages
         self.lbl_toast = QtWidgets.QLabel(self)
@@ -360,7 +360,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # the EVE connection status display — there is no status bar.
         identity_row = QtWidgets.QHBoxLayout()
         identity_row.setSpacing(12)
-        self.lbl_portrait = QtWidgets.QLabel()
+        self.lbl_portrait = ClickableLabel()
         self.lbl_portrait.setFixedSize(72, 72)
         self.lbl_portrait.setScaledContents(True)
         self.lbl_portrait.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -407,7 +407,6 @@ class MainWindow(QtWidgets.QMainWindow):
         top_bar.addWidget(self.status_sources_widget)
         top_bar.addStretch()
         top_bar.addWidget(self.pushButton_trip_get)
-        top_bar.addWidget(self.pushButton_eve_login)
         content_layout.addLayout(top_bar)
 
         # Hero route bar: the thing you touch every session.
@@ -518,7 +517,6 @@ class MainWindow(QtWidgets.QMainWindow):
     }
     QPushButton#pushButton_find_path:hover { background-color: #008ae6; }
     
-    QPushButton#pushButton_eve_login { background-color: #2c3e50; border: 1px solid #3e4451; }
     QPushButton#pushButton_trip_get { background-color: #b38600; color: #1b1e23; }
     QPushButton#pushButton_trip_get:hover { background-color: #e6ac00; }
     
@@ -594,11 +592,15 @@ class MainWindow(QtWidgets.QMainWindow):
         padding: 0;
     }
 
-    /* Mapper status pill (clickable) */
+    /* Mapper status pill (clickable; hover confirms it) */
     QLabel#status_pill {
         border: 1px solid #3e4451;
         border-radius: 14px;
         padding: 6px 14px;
+    }
+    QLabel#status_pill:hover {
+        border-color: #61afef;
+        background-color: #232830;
     }
 
     /* Hero route bar */
@@ -802,7 +804,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lineEdit_region_avoid_name.setCompleter(completer)
 
         # Signals
-        self.pushButton_eve_login.clicked.connect(self.btn_eve_login_clicked)
+        self.lbl_connection.clicked.connect(self.btn_eve_login_clicked)
+        self.lbl_portrait.clicked.connect(self._portrait_clicked)
         self.pushButton_player_location.clicked.connect(self.btn_player_location_clicked)
         self.pushButton_find_path.clicked.connect(self.btn_find_path_clicked)
         self.pushButton_trip_get.clicked.connect(self.btn_trip_get_clicked)
@@ -1274,37 +1277,55 @@ class MainWindow(QtWidgets.QMainWindow):
     def _status_eve_connection_update(self):
         """The identity row IS the EVE connection status display."""
         if self.state_eve_connection["connected"]:
-            self.pushButton_eve_login.setText("Logout")
             self.pushButton_player_location.setEnabled(True)
             self.pushButton_set_dest.setEnabled(True)
 
             if self.state_eve_connection["char_name"]:
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
                 self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
-            self.lbl_connection.setText("Connected")
-            self.lbl_connection.setStyleSheet("color: #98c379; font-size: 11px;")
+            self.lbl_connection.setText(
+                '<span style="color:#98c379">Connected</span>'
+                '<span style="color:#5c6370"> · </span>'
+                '<span style="color:#61afef">Log out</span>'
+            )
             self._set_status_badge("#98c379")
+            self.lbl_portrait.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+            self.lbl_portrait.setToolTip(
+                "Logged in as {}".format(self.state_eve_connection["char_name"])
+            )
 
             self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
-            self.lbl_connection.setText(self.state_eve_connection["error"])
-            self.lbl_connection.setStyleSheet("color: #e06c75; font-size: 11px;")
+            self.lbl_connection.setText(
+                '<span style="color:#e06c75">{}</span>'
+                '<span style="color:#5c6370"> · </span>'
+                '<span style="color:#61afef">Retry</span>'.format(
+                    self.state_eve_connection["error"]
+                )
+            )
             self._set_status_badge("#e06c75")
             return
 
-        self.pushButton_eve_login.setText("Log in with EvE")
         self.pushButton_player_location.setEnabled(False)
         self.pushButton_set_dest.setEnabled(False)
 
         self.lbl_header.setText("DAYTRIPPER")
         self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
-        self.lbl_connection.setText("Not logged in")
-        self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
+        self.lbl_connection.setText('<span style="color:#61afef">Log in with EvE</span>')
         self._set_status_badge("#5c6370")
+        self.lbl_portrait.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.lbl_portrait.setToolTip("Log in with EVE")
 
         self._load_portrait(1)
+
+    @QtCore.Slot()
+    def _portrait_clicked(self):
+        # The portrait is a login affordance only while logged out; clicking
+        # your own face should never log you out.
+        if not self.state_eve_connection["connected"]:
+            self.btn_eve_login_clicked()
 
     def _set_status_badge(self, color):
         self.lbl_status_badge.setStyleSheet(
@@ -1331,23 +1352,29 @@ class MainWindow(QtWidgets.QMainWindow):
         mapper_word = "mapper" if active_count == 1 else "mappers"
         if active_count > 0 and not has_errors and self._last_fetch_at is None:
             # Before the first fetch "0 connections" would read as a problem.
-            self.status_sources_widget.setText(
-                f"●  {active_count} {mapper_word} · awaiting first fetch   ⚙"
-            )
-            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
+            self._set_pill("#abb2bf", f"{active_count} {mapper_word} · awaiting first fetch")
         elif has_errors:
-            self.status_sources_widget.setText(
-                f"●  {active_count} {mapper_word} · {total_connections} connections · errors   ⚙"
+            self._set_pill(
+                "#e06c75",
+                f"<b>{active_count} {mapper_word} · {total_connections} connections · errors</b>",
             )
-            self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
         elif active_count > 0:
-            self.status_sources_widget.setText(
-                f"●  {active_count} {mapper_word} · {total_connections} connections   ⚙"
+            self._set_pill(
+                "#98c379", f"{active_count} {mapper_word} · {total_connections} connections"
             )
-            self.status_sources_widget.setStyleSheet("color: #98c379;")
         else:
-            self.status_sources_widget.setText("●  No mappers — click to configure   ⚙")
-            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
+            self._set_pill("#abb2bf", "No mappers", action="Add one")
+
+    def _set_pill(self, color, status_html, action="Manage"):
+        """Status pill content: colored status text plus a link-colored
+        action word so the pill reads as clickable at a glance."""
+        self.status_sources_widget.setText(
+            '<span style="color:{c}">●&nbsp;&nbsp;{s}</span>'
+            '<span style="color:#5c6370">&nbsp;&nbsp;·&nbsp;&nbsp;</span>'
+            '<span style="color:#61afef">{a} ⚙</span>'.format(
+                c=color, s=status_html, a=action
+            )
+        )
 
     @QtCore.Slot(bool, str)
     def login_handler(self, is_ok, char_name):
@@ -1518,8 +1545,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.worker_thread.isRunning():
             self.pushButton_trip_get.setEnabled(False)
             self.pushButton_find_path.setEnabled(False)
-            self.status_sources_widget.setText("●  Refreshing mappers…")
-            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
+            self._set_pill("#abb2bf", "Refreshing mappers…")
             self.worker_thread.start()
         else:
             self._update_sources_status()
