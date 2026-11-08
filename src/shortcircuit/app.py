@@ -48,6 +48,21 @@ class MessageType(Enum):
     OK = 2
 
 
+class ClickableLabel(QtWidgets.QLabel):
+    """Status-bar label that acts as a link: click emits `clicked`."""
+
+    clicked = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        event.accept()
+
+
 class RouteWorker(QtCore.QObject):
     finished = QtCore.Signal(list, str)
 
@@ -143,8 +158,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Read stored settings
         self.read_settings()
 
-        self.status_sources_widget = QtWidgets.QLabel()
+        self.status_sources_widget = ClickableLabel()
         self.status_sources_widget.setContentsMargins(5, 0, 5, 0)
+        self.status_sources_widget.setToolTip("Click to configure mappers")
+        self.status_sources_widget.clicked.connect(self.btn_trip_config_clicked)
         self.statusBar().addPermanentWidget(self.status_sources_widget, 0)
         self._update_sources_status()
 
@@ -203,6 +220,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # Start version check
         self.version_thread.start()
 
+        # One startup fetch when mappers are already configured, so a
+        # returning user doesn't have to remember to click Refresh Mappers.
+        # This is a single fetch, not a recurring auto-refresh.
+        if any(cfg.enabled for cfg in self.mapper_configs):
+            QtCore.QTimer.singleShot(1000, self._startup_fetch)
+
         # Apply custom theme
         self._apply_styles()
 
@@ -215,12 +238,19 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         # Navigation
         self.pushButton_eve_login = QtWidgets.QPushButton("Log in with EvE")
-        self.pushButton_player_location = QtWidgets.QPushButton("Get player location")
+        self.pushButton_player_location = QtWidgets.QPushButton("◎")
+        self.pushButton_player_location.setFixedWidth(36)
+        self.pushButton_player_location.setToolTip(
+            "Use my current location as the source (requires EVE login)"
+        )
         self.pushButton_player_location.setEnabled(False)
 
         self.lineEdit_set_dest = QtWidgets.QLineEdit()
-        self.lineEdit_set_dest.setPlaceholderText("System name")
-        self.pushButton_set_dest = QtWidgets.QPushButton("Set destination")
+        self.lineEdit_set_dest.setPlaceholderText("Select a route row or type a system")
+        self.pushButton_set_dest = QtWidgets.QPushButton("Set in-game destination")
+        self.pushButton_set_dest.setToolTip(
+            "Set the EVE autopilot destination (requires EVE login)"
+        )
         self.pushButton_set_dest.setEnabled(False)
 
         self.lineEdit_source = QtWidgets.QLineEdit()
@@ -228,12 +258,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lineEdit_destination = QtWidgets.QLineEdit()
         self.lineEdit_destination.setPlaceholderText("Destination system")
 
+        self.pushButton_swap = QtWidgets.QPushButton("↕")
+        self.pushButton_swap.setFixedWidth(36)
+        self.pushButton_swap.setToolTip("Swap source and destination")
+
         self.pushButton_find_path = QtWidgets.QPushButton("Find path")
         self.pushButton_reset = QtWidgets.QPushButton("Reset chain")
 
-        # Tripwire
-        self.pushButton_trip_config = QtWidgets.QPushButton("Wormhole Configuration")
-        self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Wormholes")
+        # Mappers
+        self.pushButton_trip_config = QtWidgets.QPushButton("Mappers…")
+        self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Mappers")
         self.pushButton_trip_get.setEnabled(False)
 
         # Restrictions
@@ -354,10 +388,13 @@ class MainWindow(QtWidgets.QMainWindow):
         results_layout.addWidget(self.label_status)
         results_layout.addWidget(self.tableWidget_path)
 
-        # Floating action buttons below table
+        # In-game autopilot row below the table: the field fills from the
+        # selected route row (or can be typed into), the button pushes it
+        # to the EVE client.
         row_table_actions = QtWidgets.QHBoxLayout()
+        self.lineEdit_set_dest.setMaximumWidth(260)
+        row_table_actions.addWidget(self.lineEdit_set_dest)
         row_table_actions.addWidget(self.pushButton_set_dest)
-        row_table_actions.addWidget(self.pushButton_player_location)
         row_table_actions.addStretch()
 
         # Copy Table Button (reusing existing logic)
@@ -596,9 +633,16 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.setSpacing(10)
 
         layout.addWidget(QtWidgets.QLabel("Source:"))
-        layout.addWidget(self.lineEdit_source)
+        row_source = QtWidgets.QHBoxLayout()
+        row_source.addWidget(self.lineEdit_source)
+        row_source.addWidget(self.pushButton_player_location)
+        layout.addLayout(row_source)
+
         layout.addWidget(QtWidgets.QLabel("Destination:"))
-        layout.addWidget(self.lineEdit_destination)
+        row_dest = QtWidgets.QHBoxLayout()
+        row_dest.addWidget(self.lineEdit_destination)
+        row_dest.addWidget(self.pushButton_swap)
+        layout.addLayout(row_dest)
 
         layout.addSpacing(10)
 
@@ -694,6 +738,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         self.pushButton_copy_clipboard.clicked.connect(self.short_format_click_btn)
+        self.pushButton_swap.clicked.connect(self.btn_swap_clicked)
         self.lineEdit_set_dest.returnPressed.connect(self.btn_set_dest_clicked)
         self.tableWidget_path.itemSelectionChanged.connect(self.table_item_selection_changed)
 
@@ -1167,17 +1212,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if has_errors:
             self.status_sources_widget.setText(
-                f"Wormhole Status: {active_count} Active ({total_connections} conn) - ERRORS"
+                f"Mappers: {active_count} active · {total_connections} connections · errors"
             )
             self.status_sources_widget.setStyleSheet("color: #e06c75; font-weight: bold;")
-        else:
+        elif active_count > 0:
             self.status_sources_widget.setText(
-                f"Wormhole Status: {active_count} Active ({total_connections} conn)"
+                f"Mappers: {active_count} active · {total_connections} connections"
             )
-            if active_count > 0:
-                self.status_sources_widget.setStyleSheet("color: #98c379;")
-            else:
-                self.status_sources_widget.setStyleSheet("color: #abb2bf;")
+            self.status_sources_widget.setStyleSheet("color: #98c379;")
+        else:
+            self.status_sources_widget.setText("Mappers: none enabled — click to configure")
+            self.status_sources_widget.setStyleSheet("color: #abb2bf;")
 
     @QtCore.Slot(bool, str)
     def login_handler(self, is_ok, char_name):
@@ -1193,6 +1238,14 @@ class MainWindow(QtWidgets.QMainWindow):
         Logger.info(f"Login handler: ok={is_ok}, name={char_name}, id={char_id}")
         self._status_eve_connection_update()
 
+        # Pre-fill the source with the pilot's location so the common flow
+        # after login is just: type destination, Find path. Runs silently —
+        # failures don't interrupt, and a source the user already typed is
+        # never overwritten (see location_handler).
+        if is_ok:
+            self._auto_location = True
+            self.esip.get_location()
+
     @QtCore.Slot()
     def logout_handler(self):
         self.state_eve_connection["connected"] = False
@@ -1203,11 +1256,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot(str)
     def location_handler(self, location):
+        auto = getattr(self, "_auto_location", False)
+        self._auto_location = False
+
         if location:
-            self.lineEdit_source.setText(location)
-        else:
+            if auto and self.lineEdit_source.text().strip():
+                # Don't clobber a source the user already typed.
+                pass
+            else:
+                self.lineEdit_source.setText(location)
+        elif not auto:
             self._message_box(
-                "Player destination", "Unable to get location (character not online or ESI error)"
+                "Player location", "Unable to get location (character not online or ESI error)"
             )
         self.pushButton_player_location.setEnabled(True)
 
@@ -1249,6 +1309,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def btn_player_location_clicked(self):
+        self._auto_location = False
         self.pushButton_player_location.setEnabled(False)
         self.esip.get_location()
 
@@ -1270,6 +1331,17 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def btn_find_path_clicked(self):
         self.find_path()
+
+    @QtCore.Slot()
+    def btn_swap_clicked(self):
+        source_text = self.lineEdit_source.text()
+        self.lineEdit_source.setText(self.lineEdit_destination.text())
+        self.lineEdit_destination.setText(source_text)
+
+    @QtCore.Slot()
+    def _startup_fetch(self):
+        if not self.worker_thread.isRunning():
+            self._start_worker()
 
     @QtCore.Slot()
     def btn_trip_config_clicked(self):
@@ -1318,7 +1390,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.worker_thread.start()
         else:
             self._update_sources_status()
-            self._message_box("Wormhole Sources", "Update process is already running.")
+            self._message_box("Mappers", "A mapper refresh is already running.")
 
     @QtCore.Slot()
     def auto_refresh_triggered(self):
