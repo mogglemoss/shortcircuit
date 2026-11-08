@@ -113,8 +113,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mapper_states: Dict[str, StateMapper] = {}
 
         self.global_proxy = None
-        self.auto_refresh_enabled = False
-        self.auto_refresh_interval = 30
+        # Monotonic timestamp of the last completed mapper fetch; drives the
+        # pill tooltip and the stale-data hint. There is deliberately NO
+        # recurring auto-refresh: hitting mapper servers while the user
+        # isn't even looking is wasteful and rude. One fetch at startup,
+        # manual refreshes after that.
+        self._last_fetch_at = None
 
         self.state_eve_connection = StateEVEConnection(
             {"connected": False, "char_name": None, "char_id": 0, "error": None}
@@ -122,10 +126,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.network_manager = QtNetwork.QNetworkAccessManager(self)
         self.network_manager.finished.connect(self._on_portrait_loaded)
-
-        self.auto_refresh_timer = QtCore.QTimer(self)
-        self.auto_refresh_timer.setInterval(self.auto_refresh_interval * 1000)
-        self.auto_refresh_timer.timeout.connect(self.auto_refresh_triggered)
 
         # Create UI Elements (replaces setupUi)
         self._create_ui_elements()
@@ -447,7 +447,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _apply_styles(self):
         style = """
-    QMainWindow { background-color: #1b1e23; color: #dcdcdc; font-family: "Segoe UI", sans-serif; }
+    /* No font-family override: "Segoe UI" is a Windows font, and forcing
+       it makes macOS/Linux substitute something ugly. Each platform's
+       native UI font is the right answer. */
+    QMainWindow { background-color: #1b1e23; color: #dcdcdc; }
     
     /* Sidebar */
     QWidget#sidebar { background-color: #21252b; border-right: 1px solid #181a1f; }
@@ -504,11 +507,15 @@ class MainWindow(QtWidgets.QMainWindow):
     QPushButton#pushButton_trip_get:hover { background-color: #e6ac00; }
     
     /* Table */
-    QTableWidget { 
-        background-color: #21252b; 
-        border: 1px solid #3e4451; 
-        gridline-color: #2c313a; 
+    QTableWidget {
+        background-color: #21252b;
+        border: 1px solid #3e4451;
+        gridline-color: #2c313a;
         selection-background-color: #3e4451;
+        font-size: 13px;
+    }
+    QTableWidget::item {
+        padding: 4px 8px;
     }
     QHeaderView {
         background-color: #282c34;
@@ -789,9 +796,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def read_settings_general(self):
         self.global_proxy = self.settings.value("proxy", "")
-        self.auto_refresh_enabled = self.settings.value("auto_refresh_enabled", "false") == "true"
-        self.auto_refresh_interval = int(self.settings.value("auto_refresh_interval", 30))
-
         # Mapper configs: migrate_legacy handles both historic layouts (flat
         # MainWindow/tripwire_* keys and the fork's grouped Tripwire/* keys),
         # so the fork-era migration shim is gone.
@@ -805,8 +809,6 @@ class MainWindow(QtWidgets.QMainWindow):
             cfg.name: StateMapper({"connections": 0, "error": None})
             for cfg in self.mapper_configs
         }
-
-        self.update_auto_refresh_state()
 
         if any(cfg.enabled for cfg in self.mapper_configs):
             self.pushButton_trip_get.setEnabled(True)
@@ -868,8 +870,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def write_settings_general(self):
         self.settings.setValue("proxy", getattr(self, "global_proxy", ""))
-        self.settings.setValue("auto_refresh_enabled", getattr(self, "auto_refresh_enabled", False))
-        self.settings.setValue("auto_refresh_interval", getattr(self, "auto_refresh_interval", 30))
         save_configs(self.settings, self.mapper_configs)
 
     def write_settings(self):
@@ -1144,6 +1144,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self.eve_db.name2id(dest_sys_name),
         )
 
+        # Politeness over automation: we never refetch mapper data behind
+        # the user's back (and a just-in-time fetch here would make every
+        # route feel slow). Instead, routing on stale data earns a hint.
+        if (
+            self._last_fetch_at is not None
+            and time.monotonic() - self._last_fetch_at > 15 * 60
+        ):
+            minutes = int((time.monotonic() - self._last_fetch_at) / 60)
+            self._toast(
+                "Wormhole data is {} min old — Refresh Mappers for the current chain".format(minutes),
+                duration_ms=5000,
+            )
+
     @QtCore.Slot(list, str)
     def route_result_handler(self, route, short_format):
         self.pushButton_find_path.setEnabled(True)
@@ -1354,6 +1367,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.mapper_states[name] = StateMapper({"connections": 0, "error": "error"})
             else:
                 self.mapper_states[name] = StateMapper({"connections": count, "error": None})
+        self._last_fetch_at = time.monotonic()
+        self.status_sources_widget.setToolTip(
+            "Last fetch: {} — click to configure mappers".format(time.strftime("%H:%M"))
+        )
         self._update_sources_status()
 
         # Empty-state guidance: once connections are in and no route is
@@ -1440,20 +1457,10 @@ class MainWindow(QtWidgets.QMainWindow):
         save_configs(self.settings, self.mapper_configs)
         self.settings.setValue("proxy", self.global_proxy)
 
-        self.update_auto_refresh_state()
         self._update_sources_status()
 
         has_active = any(cfg.enabled for cfg in self.mapper_configs)
         self.pushButton_trip_get.setEnabled(has_active and not self.worker_thread.isRunning())
-
-    def update_auto_refresh_state(self):
-        self.auto_refresh_timer.setInterval(self.auto_refresh_interval * 1000)
-        has_active = any(cfg.enabled for cfg in self.mapper_configs)
-        if self.auto_refresh_enabled and has_active:
-            if not self.auto_refresh_timer.isActive():
-                self.auto_refresh_timer.start()
-        else:
-            self.auto_refresh_timer.stop()
 
     @QtCore.Slot()
     def btn_trip_get_clicked(self):
@@ -1467,18 +1474,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self._update_sources_status()
             self._message_box("Mappers", "A mapper refresh is already running.")
-
-    @QtCore.Slot()
-    def auto_refresh_triggered(self):
-        has_active = any(cfg.enabled for cfg in self.mapper_configs)
-        if not self.worker_thread.isRunning() and has_active:
-            self.btn_trip_get_clicked()
-        elif self.worker_thread.isRunning():
-            # Silently skip if already running to avoid spamming status bar
-            pass
-        else:
-            # Credentials missing or other issue
-            self._update_sources_status()
 
     @QtCore.Slot()
     def btn_system_avoid_add_clicked(self):
