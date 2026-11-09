@@ -21,6 +21,7 @@ from .model.logger import Logger
 from .model.mapper_config import (
     MapperConfig,
     default_configs,
+    is_configured,
     load_configs,
     migrate_legacy,
     save_configs,
@@ -510,10 +511,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Start version check
         self.version_thread.start()
 
-        # One startup fetch when mappers are already configured, so a
-        # returning user doesn't have to remember to click Refresh Mappers.
-        # This is a single fetch, not a recurring auto-refresh.
-        if any(cfg.enabled for cfg in self.mapper_configs):
+        # One startup fetch when a mapper is set up, so a returning user
+        # doesn't have to remember to click Refresh Mappers. A single fetch,
+        # not a recurring auto-refresh, and never for a mapper missing its
+        # credentials (a fresh install's default Tripwire has none).
+        if self._mappers_ready():
             QtCore.QTimer.singleShot(1000, self._startup_fetch)
 
         # Paint everything in the active mode now (widgets built before the
@@ -1643,7 +1645,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 total_connections += state["connections"]
 
         mapper_word = "mapper" if active_count == 1 else "mappers"
-        if active_count > 0 and not has_errors and self._last_fetch_at is None:
+        if active_count > 0 and not self._mappers_ready():
+            # Enabled but missing credentials (a fresh install's default
+            # Tripwire): say what's needed rather than await a fetch that
+            # won't happen.
+            self._set_pill("text_secondary", "Mappers not set up", action="Set up")
+        elif active_count > 0 and not has_errors and self._last_fetch_at is None:
             # Before the first fetch "0 connections" would read as a problem.
             self._set_pill("text_secondary", f"{active_count} {mapper_word} · awaiting first fetch")
         elif has_errors:
@@ -1805,8 +1812,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _startup_fetch(self):
-        if not self.worker_thread.isRunning():
+        if self._mappers_ready() and not self.worker_thread.isRunning():
             self._start_worker()
+
+    def _mappers_ready(self):
+        """Whether any enabled mapper has what it needs to fetch."""
+        return any(cfg.enabled and is_configured(cfg) for cfg in self.mapper_configs)
 
     @QtCore.Slot()
     def btn_trip_config_clicked(self):

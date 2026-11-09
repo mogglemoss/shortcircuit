@@ -11,6 +11,7 @@ from .mapper_config import (
   TYPE_TRIPWIRE,
   TYPE_WANDERER,
   MapperConfig,
+  is_configured,
 )
 from .mapper_registry import MapperRegistry
 from .pathfinder import Pathfinder
@@ -104,6 +105,11 @@ class Navigation:
     configs: List[MapperConfig] = getattr(self.app_obj, 'mapper_configs', []) or []
     for cfg in configs:
       if not cfg.enabled:
+        continue
+      # A mapper missing its credentials can only fail, and building it
+      # may already send a request (Tripwire logs in from its constructor).
+      if not is_configured(cfg):
+        Logger.info(f"Mapper '{cfg.name}' is not set up yet, skipping")
         continue
       builder = MAPPER_BUILDERS.get(cfg.type)
       if builder is None:
