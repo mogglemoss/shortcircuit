@@ -186,6 +186,15 @@ def _mode_tokens(palette, accent, on_accent, mode):
       "selection": p.get("border-soft"),
     })
 
+  # One accent per screen: the brand's accent is Find path, so Refresh
+  # Mappers drops the default look's amber and takes the neutral button
+  # style instead of competing with it.
+  out.update({
+    "action": out.get("button"),
+    "action_hover": out.get("button_hover"),
+    "on_action": out.get("on_button"),
+  })
+
   accent = _hex(accent)
   if accent:
     out.update({

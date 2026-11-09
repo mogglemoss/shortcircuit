@@ -260,3 +260,12 @@ def test_portrait_slot_shows_the_right_image(qapp, tmp_path):
     assert w.lbl_portrait.pixmap().cacheKey() == silhouette.cacheKey()
   finally:
     theme.set_brand(None)
+
+
+@pytest.mark.parametrize("mode", ["dark", "light"])
+def test_brand_makes_refresh_neutral(tmp_path, mode):
+  # The brand accent belongs to Find path; Refresh takes the button style.
+  ui = brands.load_pack(_orange_pack(tmp_path / "orange"))["ui"][mode]
+  assert ui["action"] == ui["button"]
+  assert ui["action_hover"] == ui["button_hover"]
+  assert ui["on_action"] == ui["on_button"]
