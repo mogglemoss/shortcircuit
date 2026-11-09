@@ -40,7 +40,10 @@ DARK = {
   "text": "#dcdcdc",
   "text_strong": "#ffffff",
   "text_secondary": "#abb2bf",
-  "text_faint": "#5c6370",
+  # Placeholder, row numbers, separators, disabled labels. Was #5c6370
+  # (2.3-2.6:1, hard to read); now the dimmest grey that reaches 4.5:1 on
+  # both the panels and the input fields.
+  "text_faint": "#8d94a1",
   "focus": "#00aaff",
   "link": "#61afef",
   "primary_top": "#007acc",

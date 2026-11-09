@@ -82,12 +82,14 @@ def test_unknown_mode_falls_back_to_system(qapp):
 @pytest.mark.parametrize("fg,bg", [
   ("text", "panel"), ("text", "window"), ("text", "field"),
   ("text_secondary", "panel"), ("text_secondary", "window"),
-  ("text_faint", "panel"), ("link", "panel"),
+  ("text_faint", "panel"), ("text_faint", "field"), ("link", "panel"),
   ("on_button", "button"), ("on_primary", "primary_top"),
   ("on_primary", "primary_bottom"), ("on_action", "action"),
 ])
-def test_light_mode_text_meets_wcag_aa(fg, bg):
-  assert _contrast(LIGHT[fg], LIGHT[bg]) >= 4.5
+@pytest.mark.parametrize("mode", ["dark", "light"])
+def test_text_meets_wcag_aa(mode, fg, bg):
+  tokens = DARK if mode == "dark" else LIGHT
+  assert _contrast(tokens[fg], tokens[bg]) >= 4.5
 
 
 @pytest.mark.parametrize("fg", [
