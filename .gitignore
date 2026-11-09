@@ -26,3 +26,6 @@ src/database/*.csv
 # for a private build; see src/shortcircuit/brand_packs/README.md.
 src/shortcircuit/brand_packs/*
 !src/shortcircuit/brand_packs/README.md
+
+# Claude Code session worktrees
+.claude/worktrees/
