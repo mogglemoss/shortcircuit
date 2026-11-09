@@ -26,7 +26,8 @@ Since 3.0, this fork is built on [secondfry's](https://github.com/secondfry/shor
 - **[Eve-Scout](https://eve-scout.com/)** — Automatic Thera & Turnur connections, delivered silently and without ceremony
 - **[Tripwire](https://tripwire.eve-apps.com/)** — Your corp or alliance chain, with your account
 - **[Wanderer](https://wanderer.space/)** — Any map you have an API token for
-- **[Pathfinder](https://github.com/exodus4d/pathfinder)** — Instances that publish a JSON connections export
+
+Pathfinder isn't supported yet. Pathfinder only shares connections with a logged-in browser, which takes more than a token to work around; it's on the list, along with Aperture.
 
 **Granular Route Filtering** gives you fine-grained control over which paths Short Circuit will even consider dignifying with a response:
 
@@ -83,7 +84,7 @@ The solar system data ships with the source. Builds refresh it from [Fuzzwork](h
 
 ## ⚙️ Quick Start
 
-1. **Connect your mappers** — Click the mapper pill at the top (it reads *Mappers not set up · Set up* on a fresh install), then give the default Tripwire entry your account, or add Wanderer, Pathfinder, or Eve-Scout
+1. **Connect your mappers** — Click the mapper pill at the top (it reads *Mappers not set up · Set up* on a fresh install), then give the default Tripwire entry your account, or add Wanderer or Eve-Scout
 2. **Log in with EVE** *(optional)* — Click *Log in with EvE* under the portrait, once. From then on you stay logged in, and your location fills the Source field by itself
 3. **Set your route** — Type a destination in the route bar (and a source, if you didn't log in)
 4. **Configure restrictions** — Set ship size limits, adjust security sliders, and populate your avoidance list based on what you're flying and who is currently motivated to kill you specifically
@@ -142,7 +143,7 @@ Fly accordingly.
 
 - **[farshield](https://github.com/farshield/shortcircuit)** — Built the original Short Circuit. An absolute legend who started all of this.
 - **[secondfry](https://github.com/secondfry/shortcircuit)** — Kept the lights on through years of ESI changes and CCP's creative approach to API stability, and built the modern core this fork now stands on. Also a legend. Arguably more of a legend, given the sustained and thankless nature of the effort.
-- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added Wanderer and Pathfinder support, themes and brand packs, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud boomerang of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
+- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added Wanderer support, themes and brand packs, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud boomerang of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
 
 ---
 
