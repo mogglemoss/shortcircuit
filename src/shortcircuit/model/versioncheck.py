@@ -13,6 +13,10 @@ from shortcircuit import __version__ as app_version
 from .logger import Logger
 from .utility.configuration import Configuration
 
+# This fork's own releases. Upstream's repo has its own version numbers
+# (v1.x), so asking it would never announce a release of this fork.
+RELEASES_API = 'https://api.github.com/repos/mogglemoss/shortcircuit/releases/latest'
+
 
 class VersionCheck(QtCore.QObject):
   """
@@ -31,11 +35,7 @@ class VersionCheck(QtCore.QObject):
       debugpy.debug_this_thread()
 
     try:
-      response = requests.get(
-        url=
-        'https://api.github.com/repos/secondfry/shortcircuit/releases/latest',
-        timeout=3.1,
-      )
+      response = requests.get(url=RELEASES_API, timeout=3.1)
     except requests.exceptions.RequestException as e:
       Logger.error('Exception raised while trying to get latest version info')
       Logger.error(e)

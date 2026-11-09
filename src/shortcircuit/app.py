@@ -1947,8 +1947,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         version_box = QtWidgets.QMessageBox(self)
         version_box.setWindowTitle("New version available!")
+        # Release notes are written in Markdown; render them, not their syntax.
+        version_box.setTextFormat(QtCore.Qt.TextFormat.MarkdownText)
         version_box.setText(
-            "Your version: v{} ({}).\nGitHub latest release: v{} ({}).\n\n{}".format(
+            "Your version: v{} ({}).  \nGitHub latest release: v{} ({}).\n\n{}".format(
                 __version__,
                 last_update,
                 version,
@@ -1956,15 +1958,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 changelog,
             )
         )
-        version_box.addButton("Download now", QtWidgets.QMessageBox.AcceptRole)
+        download = version_box.addButton("Download now", QtWidgets.QMessageBox.AcceptRole)
         version_box.addButton("Remind me later", QtWidgets.QMessageBox.RejectRole)
-        ret = version_box.exec()
+        version_box.exec()
 
-        if ret != QtWidgets.QMessageBox.AcceptRole:
+        # exec() returns an opaque id for custom buttons, never their role.
+        if version_box.clickedButton() is not download:
             return
 
         url_to_open = QtCore.QUrl(
-            f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
+            latest.get("html_url")
+            or f"https://github.com/mogglemoss/shortcircuit/releases/tag/{latest['tag_name']}"
         )
 
         if sys.platform == "linux":
