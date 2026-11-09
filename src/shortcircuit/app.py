@@ -3,6 +3,7 @@
 from enum import Enum
 import json
 import os
+import re
 import sys
 import time
 from functools import partial
@@ -1565,6 +1566,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_portrait.setStyleSheet(
             theme.qss("border: 1px solid @border; background-color: @field;")
         )
+        self._render_portrait_slot()
 
         if self.state_eve_connection["connected"]:
             self.pushButton_player_location.setEnabled(True)
@@ -1600,7 +1602,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_set_dest.setEnabled(False)
 
         # Logged out, the letterhead is the corp's name (or the app's own).
-        self.lbl_header.setText(theme.brand["short"].upper() if theme.brand else "DAYTRIPPER")
+        self.lbl_header.setText(theme.brand["letterhead"].upper() if theme.brand else "DAYTRIPPER")
         self.lbl_header.setStyleSheet(theme.qss("color: @text; font-weight: bold; font-size: 14px;"))
         self.lbl_connection.setText(
             '<span style="color:{}">Log in with EvE</span>'.format(t["link"])
@@ -1979,12 +1981,63 @@ class MainWindow(QtWidgets.QMainWindow):
             ok = pixmap.loadFromData(data)
             Logger.info(f"Portrait response: url={url}, data_size={len(data)}, decode_ok={ok}")
             if ok:
-                self.lbl_portrait.setPixmap(pixmap)
+                # Cache by whose portrait it is; what the slot shows is
+                # decided in _render_portrait_slot, so a reply that lands
+                # after a logout or brand change can't overwrite the slot.
+                match = re.search(r"/characters/(\d+)/", url)
+                char_id = int(match.group(1)) if match else None
+                if char_id == 1:
+                    self._silhouette_pixmap = pixmap
+                elif char_id is not None:
+                    self._character_pixmap = (char_id, pixmap)
+                self._render_portrait_slot()
             else:
                 Logger.error(f"Portrait image decode failed for {url}")
         else:
             Logger.error(f"Portrait network error: {reply.errorString()}, url={url}")
         reply.deleteLater()
+
+    def _render_portrait_slot(self):
+        """Logged in: your character. Logged out: the brand's mark if the
+        active pack has one, else EVE's placeholder silhouette."""
+        pixmap = None
+        if self.state_eve_connection["connected"]:
+            cached = getattr(self, "_character_pixmap", None)
+            if cached and cached[0] == self.state_eve_connection["char_id"]:
+                pixmap = cached[1]
+        else:
+            mark = (theme.brand or {}).get("mark")
+            pixmap = self._mark_pixmap(mark) if mark else None
+        if pixmap is None:
+            pixmap = getattr(self, "_silhouette_pixmap", None)
+        if pixmap is None:
+            self.lbl_portrait.clear()
+        else:
+            self.lbl_portrait.setPixmap(pixmap)
+
+    def _mark_pixmap(self, path):
+        """A brand mark centered on a square canvas at its own proportions
+        (the label stretches whatever it shows to fill its square)."""
+        cache = self.__dict__.setdefault("_mark_cache", {})
+        if path not in cache:
+            image = QtGui.QPixmap(path)
+            if image.isNull():
+                Logger.warning("Brand mark {} could not be loaded".format(path))
+                cache[path] = None
+            else:
+                size, inner = 144, 116
+                canvas = QtGui.QPixmap(size, size)
+                canvas.fill(QtCore.Qt.GlobalColor.transparent)
+                scaled = image.scaled(
+                    inner, inner,
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                    QtCore.Qt.TransformationMode.SmoothTransformation,
+                )
+                painter = QtGui.QPainter(canvas)
+                painter.drawPixmap((size - scaled.width()) // 2, (size - scaled.height()) // 2, scaled)
+                painter.end()
+                cache[path] = canvas
+        return cache[path]
 
     # event: QCloseEvent
     def closeEvent(self, event):

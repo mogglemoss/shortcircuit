@@ -200,9 +200,24 @@ def _mode_tokens(palette, accent, on_accent, mode):
   return {k: v for k, v in out.items() if v}
 
 
+def _asset(path, name):
+  """Absolute path of an image the pack names, or None. brand.json is
+  untrusted, so the name must be a plain file name directly inside the
+  pack folder: no directories, no '..', no hidden files, no symlinks,
+  and an image extension."""
+  if not isinstance(name, str) or not name or name != os.path.basename(name) or name.startswith("."):
+    return None
+  if os.path.splitext(name)[1].lower() not in ASSET_EXTENSIONS:
+    return None
+  file = os.path.join(path, name)
+  if not os.path.isfile(file) or os.path.islink(file) or os.path.getsize(file) > MAX_ASSET_BYTES:
+    return None
+  return os.path.abspath(file)
+
+
 def load_pack(path):
-  """Parse a pack folder into {slug, name, short, ui: {dark, light}}, or
-  None (logged) when it can't be used."""
+  """Parse a pack folder into {slug, name, short, letterhead, mark,
+  ui: {dark, light}}, or None (logged) when it can't be used."""
   try:
     data = _read_brand_json(path)
   except (OSError, ValueError) as e:
@@ -223,7 +238,28 @@ def load_pack(path):
   corp = data.get("corp") if isinstance(data.get("corp"), str) else ""
   short = data.get("short") if isinstance(data.get("short"), str) else ""
   name = (corp or short or slug).strip()[:60]
-  return {"slug": slug, "name": name, "short": (short or name).strip()[:40], "ui": ui}
+  short = (short or name).strip()[:40]
+
+  # Letterhead: a typographic lockup's main line if the pack has one (it is
+  # the pack's own headline), else the short name.
+  logo = data.get("logo") if isinstance(data.get("logo"), dict) else {}
+  lockup = logo.get("lockup") if isinstance(logo.get("lockup"), dict) else {}
+  main = lockup.get("main") if isinstance(lockup.get("main"), str) else ""
+  letterhead = (main or short).strip()[:60]
+
+  # The mark (an emblem, not a wordmark) stands in for the portrait while
+  # logged out. Wordmarks aren't used: they're unreadable at sidebar size
+  # and often repeat the mark.
+  mark = _asset(path, data.get("mark")) or _asset(path, data.get("landing_mark"))
+
+  return {
+    "slug": slug,
+    "name": name,
+    "short": short,
+    "letterhead": letterhead,
+    "mark": mark,
+    "ui": ui,
+  }
 
 
 # ----- importing and removing -----

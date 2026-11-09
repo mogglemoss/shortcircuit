@@ -156,3 +156,107 @@ def test_name_label_shows_markup_as_text(qapp):
 
   label = NameLabel('<img src="x">Corp')
   assert label.textFormat() == QtCore.Qt.TextFormat.PlainText
+
+
+def _png(path, color="#ff8800", size=(40, 20)):
+  from PySide6 import QtGui
+  img = QtGui.QImage(size[0], size[1], QtGui.QImage.Format.Format_ARGB32)
+  img.fill(QtGui.QColor(color))
+  assert img.save(str(path))
+
+
+def _pack_with_mark(folder, mark, extra=None):
+  data = json.load(open(os.path.join(EXAMPLE, "brand.json")))
+  data["mark"] = mark
+  data.pop("landing_mark", None)
+  data.update(extra or {})
+  return _write_pack(folder, data)
+
+
+def test_mark_resolves_inside_the_pack(qapp, tmp_path):
+  folder = tmp_path / "corp"
+  _pack_with_mark(folder, "wing.png")
+  _png(folder / "wing.png")
+  pack = brands.load_pack(str(folder))
+  assert pack["mark"] == os.path.abspath(folder / "wing.png")
+
+
+@pytest.mark.parametrize("name", [
+  "../outside.png", "sub/inside.png", ".hidden.png", "run.sh", "missing.png", "", None, 42,
+])
+def test_mark_rejects_anything_but_a_plain_image_in_the_pack(qapp, tmp_path, name):
+  folder = tmp_path / "corp"
+  _pack_with_mark(folder, name)
+  _png(tmp_path / "outside.png")
+  os.makedirs(folder / "sub", exist_ok=True)
+  _png(folder / "sub" / "inside.png")
+  _png(folder / ".hidden.png")
+  (folder / "run.sh").write_text("echo")
+  assert brands.load_pack(str(folder))["mark"] is None
+
+
+def test_mark_rejects_symlinks(qapp, tmp_path):
+  folder = tmp_path / "corp"
+  _pack_with_mark(folder, "link.png")
+  _png(tmp_path / "outside.png")
+  os.symlink(tmp_path / "outside.png", folder / "link.png")
+  assert brands.load_pack(str(folder))["mark"] is None
+
+
+def test_letterhead_prefers_lockup_main_over_short(tmp_path):
+  lockup = {"logo": {"lockup": {"above": "Ministry of", "main": "Pantoscopic Observance"}}}
+  with_lockup = brands.load_pack(_pack_with_mark(tmp_path / "a", None, lockup))
+  without = brands.load_pack(_pack_with_mark(tmp_path / "b", None))
+  assert with_lockup["letterhead"] == "Pantoscopic Observance"
+  assert without["letterhead"] == "YOURCORP"
+
+
+class _FakeWindow:
+  """Just what MainWindow._render_portrait_slot reads."""
+
+  def __init__(self, label):
+    from shortcircuit.app import MainWindow
+    self.lbl_portrait = label
+    self.state_eve_connection = {"connected": False, "char_id": 0}
+    self._mark_pixmap = lambda path: MainWindow._mark_pixmap(self, path)
+    self.render = lambda: MainWindow._render_portrait_slot(self)
+
+
+def test_portrait_slot_shows_the_right_image(qapp, tmp_path):
+  from PySide6 import QtGui
+  from shortcircuit.theme import theme
+
+  folder = tmp_path / "corp"
+  _pack_with_mark(folder, "wing.png")
+  _png(folder / "wing.png")
+  silhouette = QtGui.QPixmap(10, 10)
+  silhouette.fill(QtGui.QColor("#000000"))
+  me = QtGui.QPixmap(11, 11)
+  me.fill(QtGui.QColor("#00ff00"))
+
+  w = _FakeWindow(QtWidgets.QLabel())
+  w._silhouette_pixmap = silhouette
+  try:
+    # Logged out, default look: EVE's silhouette.
+    theme.set_brand(None)
+    w.render()
+    assert w.lbl_portrait.pixmap().cacheKey() == silhouette.cacheKey()
+
+    # Logged out with a branded pack: the corp's mark, square canvas.
+    theme.set_brand(brands.load_pack(str(folder)))
+    w.render()
+    shown = w.lbl_portrait.pixmap()
+    assert shown.width() == shown.height() == 144
+
+    # Logged in: your portrait, never the mark.
+    w.state_eve_connection = {"connected": True, "char_id": 93594488}
+    w._character_pixmap = (93594488, me)
+    w.render()
+    assert w.lbl_portrait.pixmap().cacheKey() == me.cacheKey()
+
+    # A late reply for a different character is never shown.
+    w._character_pixmap = (12345, me)
+    w.render()
+    assert w.lbl_portrait.pixmap().cacheKey() == silhouette.cacheKey()
+  finally:
+    theme.set_brand(None)
