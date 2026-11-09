@@ -27,6 +27,7 @@ from .model.mapper_config import (
 from .model.navigation import Navigation
 from .model.navprocessor import NavProcessor
 from .model.versioncheck import VersionCheck
+from .theme import theme
 from .view import resources_rc  # noqa: F401 — registers Qt resources (:/images/...)
 
 
@@ -46,6 +47,197 @@ class MessageType(Enum):
     INFO = 0
     ERROR = 1
     OK = 2
+
+
+# Main window stylesheet. Colors are theme tokens (@name), resolved by
+# theme.qss() for the active mode; see theme.py.
+MAIN_QSS = """
+    /* No font-family override: "Segoe UI" is a Windows font, and forcing
+       it makes macOS/Linux substitute something ugly. Each platform's
+       native UI font is the right answer. */
+    QMainWindow { background-color: @window; color: @text; }
+
+    /* Sidebar */
+    QWidget#sidebar { background-color: @panel; border-right: 1px solid @sidebar_edge; }
+    /* No padding: the name must sit flush-left with the status line below it. */
+    QLabel#sidebar_header { font-size: 14px; font-weight: bold; color: @text_secondary; padding: 0; }
+
+    /* GroupBoxes */
+    QGroupBox {
+        border: 1px solid @border;
+        border-radius: 4px;
+        margin-top: 10px;
+        padding-top: 10px;
+        font-weight: bold;
+        color: @text_secondary;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        padding: 0 5px;
+        left: 10px;
+    }
+
+    /* Inputs */
+    QLineEdit {
+        background-color: @field;
+        border: 1px solid @border;
+        border-radius: 3px;
+        padding: 6px;
+        color: @text;
+    }
+    QLineEdit:focus { border: 1px solid @focus; }
+
+    /* Buttons */
+    QPushButton {
+        background-color: @button;
+        border: none;
+        border-radius: 3px;
+        padding: 8px 15px;
+        color: @on_button;
+        font-weight: bold;
+    }
+    QPushButton:hover { background-color: @button_hover; }
+    QPushButton:pressed { background-color: @button_pressed; }
+    QPushButton:disabled { background-color: @button_disabled; color: @text_faint; }
+
+    /* Specific Buttons */
+    QPushButton#pushButton_find_path {
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @primary_top, stop:1 @primary_bottom);
+        border: 1px solid @primary_bottom;
+        color: @on_primary;
+    }
+    QPushButton#pushButton_find_path:hover { background-color: @primary_hover; }
+
+    QPushButton#pushButton_trip_get { background-color: @action; color: @on_action; }
+    QPushButton#pushButton_trip_get:hover { background-color: @action_hover; }
+
+    /* Table: no vertical gridlines (cells breathe instead of touching
+       rules), zebra rows, generous cell padding, padded headers. */
+    QTableWidget {
+        background-color: @panel;
+        alternate-background-color: @row_alt;
+        border: 1px solid @border;
+        selection-background-color: @selection;
+        font-size: 13px;
+    }
+    QTableWidget::item {
+        padding: 6px 12px;
+        border: none;
+        border-bottom: 1px solid @divider;
+    }
+    QHeaderView {
+        background-color: @field;
+    }
+    QHeaderView::section:horizontal {
+        background-color: @field;
+        padding: 8px 12px;
+        border: none;
+        border-bottom: 1px solid @border;
+        font-weight: bold;
+        color: @text_secondary;
+    }
+    QHeaderView::section:vertical {
+        background-color: @panel;
+        padding: 0 10px;
+        border: none;
+        border-bottom: 1px solid @divider;
+        color: @text_faint;
+        font-size: 11px;
+    }
+    QTableCornerButton::section {
+        background-color: @field;
+        border: none;
+        border-bottom: 1px solid @border;
+    }
+
+    /* Scrollbar */
+    QScrollBar:vertical { background: @panel; width: 12px; }
+    QScrollBar::handle:vertical { background: @scroll_handle; border-radius: 6px; min-height: 20px; }
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+
+    /* Sliders */
+    QSlider::groove:horizontal {
+        border: 1px solid @border;
+        height: 6px;
+        background: @field;
+        margin: 2px 0;
+        border-radius: 3px;
+    }
+    QSlider::handle:horizontal {
+        background: @focus;
+        border: 1px solid @focus;
+        width: 14px;
+        height: 14px;
+        margin: -5px 0;
+        border-radius: 7px;
+    }
+
+    /* Compact buttons sit beside line edits and must match their height */
+    QPushButton[compact="true"] {
+        padding: 6px 12px;
+    }
+
+    /* Route bar glyph buttons (locate / swap) */
+    QPushButton#btn_glyph_locate, QPushButton#btn_glyph_swap {
+        font-size: 17px;
+        padding: 0;
+    }
+
+    /* Mapper status pill (clickable; hover confirms it) */
+    QLabel#status_pill {
+        border: 1px solid @border;
+        border-radius: 14px;
+        padding: 6px 14px;
+    }
+    QLabel#status_pill:hover {
+        border-color: @link;
+        background-color: @hover_surface;
+    }
+
+    /* Hero route bar */
+    QWidget#route_bar {
+        background-color: @panel;
+        border: 1px solid @border;
+        border-radius: 6px;
+    }
+    QWidget#route_bar QLineEdit {
+        font-size: 15px;
+        padding: 9px 12px;
+    }
+    QWidget#route_bar QPushButton {
+        font-size: 15px;
+    }
+
+    /* Transient toast */
+    QLabel#toast {
+        background-color: @field;
+        border: 1px solid @border;
+        border-radius: 4px;
+        padding: 8px 14px;
+        color: @text;
+    }
+
+    /* Popup Menus */
+    QMenu {
+        background-color: @panel;
+        border: 1px solid @border;
+        color: @text;
+    }
+    QMenu::item {
+        padding: 5px 25px 5px 20px;
+        border: 1px solid transparent;
+    }
+    QMenu::item:selected {
+        background-color: @selection;
+        border-color: @focus;
+    }
+    QMenu::separator {
+        height: 1px;
+        background: @border;
+        margin: 5px 10px;
+    }
+"""
 
 
 class ClickableLabel(QtWidgets.QLabel):
@@ -310,8 +502,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if any(cfg.enabled for cfg in self.mapper_configs):
             QtCore.QTimer.singleShot(1000, self._startup_fetch)
 
-        # Apply custom theme
-        self._apply_styles()
+        # Paint everything in the active mode now (widgets built before the
+        # saved mode was read used the default), and repaint on every change:
+        # the toggle, or the OS switching while in Auto.
+        theme.changed.connect(self._restyle)
+        self._restyle()
 
         # Set default size to fit 1080p
         self.resize(1000, 800)
@@ -361,6 +556,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_sources_widget = ClickableLabel()
         self.status_sources_widget.setObjectName("status_pill")
         self.status_sources_widget.setToolTip("Click to configure mappers")
+        # Light / dark toggle: cycles Auto (follow the OS) -> Light -> Dark.
+        # The label always names the current mode; the tooltip names the next.
+        self.pushButton_theme = QtWidgets.QPushButton()
+        self.pushButton_theme.setObjectName("pushButton_theme")
+
         self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Mappers")
         self.pushButton_trip_get.setObjectName("pushButton_trip_get")
         self.pushButton_trip_get.setEnabled(False)
@@ -456,7 +656,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_portrait.setFixedSize(72, 72)
         self.lbl_portrait.setScaledContents(True)
         self.lbl_portrait.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.lbl_portrait.setStyleSheet("border: 1px solid #3e4451; background-color: #282c34;")
+        self.lbl_portrait.setStyleSheet(theme.qss("border: 1px solid @border; background-color: @field;"))
         # Connection state as a badge on the portrait corner, so the text
         # line stays flush-left with the name (no floating dot).
         self.lbl_status_badge = QtWidgets.QLabel(self.lbl_portrait)
@@ -470,7 +670,7 @@ class MainWindow(QtWidgets.QMainWindow):
         lbl_header.setObjectName("sidebar_header")
         identity_col.addWidget(lbl_header)
         self.lbl_header = lbl_header
-        self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
+        self.lbl_connection.setStyleSheet(theme.qss("color: @text_faint; font-size: 11px;"))
         identity_col.addWidget(self.lbl_connection)
         # The column takes all remaining width (no trailing stretch), so the
         # name label knows exactly how much room it has to wrap into.
@@ -499,6 +699,7 @@ class MainWindow(QtWidgets.QMainWindow):
         top_bar = QtWidgets.QHBoxLayout()
         top_bar.addWidget(self.status_sources_widget)
         top_bar.addStretch()
+        top_bar.addWidget(self.pushButton_theme)
         top_bar.addWidget(self.pushButton_trip_get)
         content_layout.addLayout(top_bar)
 
@@ -553,193 +754,57 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(new_central)
 
     def _apply_styles(self):
-        style = """
-    /* No font-family override: "Segoe UI" is a Windows font, and forcing
-       it makes macOS/Linux substitute something ugly. Each platform's
-       native UI font is the right answer. */
-    QMainWindow { background-color: #1b1e23; color: #dcdcdc; }
-    
-    /* Sidebar */
-    QWidget#sidebar { background-color: #21252b; border-right: 1px solid #181a1f; }
-    /* No padding: the name must sit flush-left with the status line below it. */
-    QLabel#sidebar_header { font-size: 14px; font-weight: bold; color: #abb2bf; padding: 0; }
-    
-    /* GroupBoxes */
-    QGroupBox { 
-        border: 1px solid #3e4451; 
-        border-radius: 4px; 
-        margin-top: 10px; 
-        padding-top: 10px;
-        font-weight: bold; 
-        color: #abb2bf;
-    }
-    QGroupBox::title { 
-        subcontrol-origin: margin; 
-        subcontrol-position: top left; 
-        padding: 0 5px; 
-        left: 10px;
-    }
-    
-    /* Inputs */
-    QLineEdit { 
-        background-color: #282c34; 
-        border: 1px solid #3e4451; 
-        border-radius: 3px; 
-        padding: 6px; 
-        color: #dcdcdc; 
-    }
-    QLineEdit:focus { border: 1px solid #00aaff; }
-    
-    /* Buttons */
-    QPushButton { 
-        background-color: #3e4451; 
-        border: none; 
-        border-radius: 3px; 
-        padding: 8px 15px; 
-        color: white; 
-        font-weight: bold;
-    }
-    QPushButton:hover { background-color: #4b5263; }
-    QPushButton:pressed { background-color: #2c313a; }
-    QPushButton:disabled { background-color: #2c313a; color: #5c6370; }
-    
-    /* Specific Buttons */
-    QPushButton#pushButton_find_path { 
-        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #007acc, stop:1 #005c99);
-        border: 1px solid #005c99;
-    }
-    QPushButton#pushButton_find_path:hover { background-color: #008ae6; }
-    
-    QPushButton#pushButton_trip_get { background-color: #b38600; color: #1b1e23; }
-    QPushButton#pushButton_trip_get:hover { background-color: #e6ac00; }
-    
-    /* Table: no vertical gridlines (cells breathe instead of touching
-       rules), zebra rows, generous cell padding, padded headers. */
-    QTableWidget {
-        background-color: #21252b;
-        alternate-background-color: #242933;
-        border: 1px solid #3e4451;
-        selection-background-color: #3e4451;
-        font-size: 13px;
-    }
-    QTableWidget::item {
-        padding: 6px 12px;
-        border: none;
-        border-bottom: 1px solid #2c313a;
-    }
-    QHeaderView {
-        background-color: #282c34;
-    }
-    QHeaderView::section:horizontal {
-        background-color: #282c34;
-        padding: 8px 12px;
-        border: none;
-        border-bottom: 1px solid #3e4451;
-        font-weight: bold;
-        color: #abb2bf;
-    }
-    QHeaderView::section:vertical {
-        background-color: #21252b;
-        padding: 0 10px;
-        border: none;
-        border-bottom: 1px solid #2c313a;
-        color: #5c6370;
-        font-size: 11px;
-    }
-    QTableCornerButton::section {
-        background-color: #282c34;
-        border: none;
-        border-bottom: 1px solid #3e4451;
-    }
-    
-    /* Scrollbar */
-    QScrollBar:vertical { background: #21252b; width: 12px; }
-    QScrollBar::handle:vertical { background: #4b5263; border-radius: 6px; min-height: 20px; }
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
-    
-    /* Sliders */
-    QSlider::groove:horizontal {
-        border: 1px solid #3e4451;
-        height: 6px;
-        background: #282c34;
-        margin: 2px 0;
-        border-radius: 3px;
-    }
-    QSlider::handle:horizontal {
-        background: #00aaff;
-        border: 1px solid #00aaff;
-        width: 14px;
-        height: 14px;
-        margin: -5px 0;
-        border-radius: 7px;
-    }
+        self.setStyleSheet(theme.qss(MAIN_QSS))
 
-    /* Compact buttons sit beside line edits and must match their height */
-    QPushButton[compact="true"] {
-        padding: 6px 12px;
-    }
+    THEME_LABELS = {"system": "◐  Auto", "light": "☀  Light", "dark": "☾  Dark"}
+    THEME_NAMES = {"system": "Auto (follows your system)", "light": "Light", "dark": "Dark"}
 
-    /* Route bar glyph buttons (locate / swap) */
-    QPushButton#btn_glyph_locate, QPushButton#btn_glyph_swap {
-        font-size: 17px;
-        padding: 0;
-    }
+    @QtCore.Slot()
+    def btn_theme_clicked(self):
+        mode = theme.next_mode()
+        theme.set_mode(mode)
+        self.settings.setValue("theme_mode", mode)
+        # set_mode only signals when the colors actually change (Auto ->
+        # Light on a light OS doesn't), but the label always must.
+        self._update_theme_button()
 
-    /* Mapper status pill (clickable; hover confirms it) */
-    QLabel#status_pill {
-        border: 1px solid #3e4451;
-        border-radius: 14px;
-        padding: 6px 14px;
-    }
-    QLabel#status_pill:hover {
-        border-color: #61afef;
-        background-color: #232830;
-    }
+    def _update_theme_button(self):
+        self.pushButton_theme.setText(self.THEME_LABELS[theme.mode])
+        self.pushButton_theme.setToolTip(
+            "Theme: {} — click for {}".format(
+                self.THEME_NAMES[theme.mode], self.THEME_NAMES[theme.next_mode()]
+            )
+        )
 
-    /* Hero route bar */
-    QWidget#route_bar {
-        background-color: #21252b;
-        border: 1px solid #3e4451;
-        border-radius: 6px;
-    }
-    QWidget#route_bar QLineEdit {
-        font-size: 15px;
-        padding: 9px 12px;
-    }
-    QWidget#route_bar QPushButton {
-        font-size: 15px;
-    }
+    @QtCore.Slot()
+    def _restyle(self):
+        """Repaint everything that carries a color for the current mode.
+        Pure painting: no network, no state changes."""
+        self._apply_styles()
+        self._style_security_rows()
+        self._render_identity()
+        if getattr(self, "_pill_args", None):
+            self._set_pill(*self._pill_args)
+        state = getattr(self, "_path_state", None)
+        if state and state[0] == "route":
+            self._render_route_summary(state[1])
+        elif state:
+            MainWindow._label_message(self.label_status, state[1], state[2])
+        if getattr(self, "_last_route", None):
+            self.add_data_to_table(self._last_route)
+            self.table_item_selection_changed()
+        self._update_theme_button()
 
-    /* Transient toast */
-    QLabel#toast {
-        background-color: #282c34;
-        border: 1px solid #3e4451;
-        border-radius: 4px;
-        padding: 8px 14px;
-        color: #dcdcdc;
-    }
-
-    /* Popup Menus */
-    QMenu {
-        background-color: #21252b;
-        border: 1px solid #3e4451;
-        color: #dcdcdc;
-    }
-    QMenu::item {
-        padding: 5px 25px 5px 20px;
-        border: 1px solid transparent;
-    }
-    QMenu::item:selected {
-        background-color: #3e4451;
-        border-color: #00aaff;
-    }
-    QMenu::separator {
-        height: 1px;
-        background: #3e4451;
-        margin: 5px 10px;
-    }
-    """
-        self.setStyleSheet(style)
+    def _style_security_rows(self):
+        """Each security row's label, filled bar and handle carry that
+        row's data color (HS green, LS yellow, NS red, WH blue)."""
+        for lbl, slider, token in self._security_rows:
+            color = theme[token]
+            lbl.setStyleSheet(f"color: {color}; font-weight: bold;")
+            slider.setStyleSheet(
+                f"QSlider::sub-page:horizontal {{ background: {color}; border: 1px solid {color}; border-radius: 3px; }}"
+                f" QSlider::handle:horizontal {{ background: {color}; border: 1px solid {color}; }}"
+            )
 
     def _setup_security_group(self):
         group = QtWidgets.QGroupBox("SECURITY PRIORITIZATION")
@@ -747,22 +812,17 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout(group)
         layout.setSpacing(5)
 
-        def create_slider(label_text, attr_name, color):
+        self._security_rows = []
+
+        def create_slider(label_text, attr_name, token):
             row = QtWidgets.QHBoxLayout()
 
             lbl = QtWidgets.QLabel(label_text)
             lbl.setFixedWidth(30)
-            lbl.setStyleSheet(f"color: {color}; font-weight: bold;")
 
             slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
             slider.setRange(1, 100)
-            # The filled part of the bar and the handle carry the row's
-            # security color, matching the label (HS green, LS yellow,
-            # NS red, WH blue).
-            slider.setStyleSheet(
-                f"QSlider::sub-page:horizontal {{ background: {color}; border: 1px solid {color}; border-radius: 3px; }}"
-                f" QSlider::handle:horizontal {{ background: {color}; border: 1px solid {color}; }}"
-            )
+            self._security_rows.append((lbl, slider, token))
 
             val_lbl = QtWidgets.QLabel("1")
             val_lbl.setFixedWidth(25)
@@ -780,10 +840,11 @@ class MainWindow(QtWidgets.QMainWindow):
             setattr(self, attr_name, slider)
             setattr(self, attr_name + "_label", val_lbl)
 
-        create_slider("HS", "slider_prio_hs", "#98c379")
-        create_slider("LS", "slider_prio_ls", "#e5c07b")
-        create_slider("NS", "slider_prio_ns", "#e06c75")
-        create_slider("WH", "slider_prio_wh", "#61afef")
+        create_slider("HS", "slider_prio_hs", "sec_hs")
+        create_slider("LS", "slider_prio_ls", "sec_ls")
+        create_slider("NS", "slider_prio_ns", "sec_ns")
+        create_slider("WH", "slider_prio_wh", "sec_wh")
+        self._style_security_rows()
 
         # Replace the old groupbox reference so isChecked() works on the new one
         self.groupBox_security = group
@@ -902,6 +963,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_player_location.clicked.connect(self.btn_player_location_clicked)
         self.pushButton_find_path.clicked.connect(self.btn_find_path_clicked)
         self.pushButton_trip_get.clicked.connect(self.btn_trip_get_clicked)
+        self.pushButton_theme.clicked.connect(self.btn_theme_clicked)
         self.pushButton_system_avoid_add.clicked.connect(self.btn_system_avoid_add_clicked)
         self.pushButton_region_avoid_add.clicked.connect(self.btn_region_avoid_add_clicked)
         self.pushButton_avoid_delete.clicked.connect(self.btn_avoid_delete_clicked)
@@ -932,6 +994,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def read_settings_general(self):
         self.global_proxy = self.settings.value("proxy", "")
+        theme.set_mode(str(self.settings.value("theme_mode", "system")))
         # Mapper configs: migrate_legacy handles both historic layouts (flat
         # MainWindow/tripwire_* keys and the fork's grouped Tripwire/* keys),
         # so the fork-era migration shim is gone.
@@ -973,7 +1036,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         for entity in self.settings.value("avoidance_list", "").split(","):
             if entity != "":
-                self._avoid_entity_name(entity)
+                self._avoid_entity_name(entity, announce=False)
 
         # Restrictions
         self.comboBox_size.setCurrentIndex(int(self.settings.value("restrictions_whsize", "0")))
@@ -1054,17 +1117,19 @@ class MainWindow(QtWidgets.QMainWindow):
     def _label_message(label, message, message_type):
         # FIXME(secondfry): set only color, not entire stylesheet.
         if message_type == MessageType.OK:
-            label.setStyleSheet("QLabel {color: #98c379;}")
+            label.setStyleSheet(theme.qss("QLabel {color: @status_ok;}"))
         elif message_type == MessageType.ERROR:
-            label.setStyleSheet("QLabel {color: #e06c75;}")
+            label.setStyleSheet(theme.qss("QLabel {color: @status_error;}"))
         else:
-            label.setStyleSheet("QLabel {color: #abb2bf;}")
+            label.setStyleSheet(theme.qss("QLabel {color: @text_secondary;}"))
         label.setText(message)
 
     def _avoid_message(self, message, message_type):
         self._toast(message)
 
     def _path_message(self, message, message_type):
+        # Remembered so a theme change can repaint it in the new colors.
+        self._path_state = ("message", message, message_type)
         MainWindow._label_message(self.label_status, message, message_type)
 
     def _toast(self, message, duration_ms=3500):
@@ -1101,19 +1166,24 @@ class MainWindow(QtWidgets.QMainWindow):
             items.append(item.text())
         return items
 
-    def _avoid_entity_name(self, name):
+    def _avoid_entity_name(self, name, announce=True):
+        """Add a system or region to the avoidance list. `announce` toasts
+        the result; restoring saved entries at startup passes False."""
         if not name:
-            self._avoid_message("Avoidance list: invalid name :(", MessageType.ERROR)
+            if announce:
+                self._avoid_message("Avoidance list: invalid name :(", MessageType.ERROR)
             return
 
         if name in self.avoidance_list():
-            self._avoid_message(
-                "Avoidance list: {} is already in the list!".format(name), MessageType.ERROR
-            )
+            if announce:
+                self._avoid_message(
+                    "Avoidance list: {} is already in the list!".format(name), MessageType.ERROR
+                )
             return
 
         QtWidgets.QListWidgetItem(name, self.listWidget_avoid)
-        self._avoid_message("Avoidance list: {} added".format(name), MessageType.OK)
+        if announce:
+            self._avoid_message("Avoidance list: {} added".format(name), MessageType.OK)
 
     def avoid_system(self):
         sys_name = self.nav.eve_db.normalize_name(self.lineEdit_system_avoid_name.text())
@@ -1126,15 +1196,15 @@ class MainWindow(QtWidgets.QMainWindow):
     @staticmethod
     def get_system_class_color(sclass):
         if sclass.startswith("C") or sclass == "WH":
-            return QtGui.QColor("#4fc3f7")  # Bright Blue
+            return theme.color("route_wh")
 
-        return {
-            "HS": QtGui.QColor("#81c784"),  # Bright Green
-            "LS": QtGui.QColor("#fff176"),  # Bright Yellow
-            "NS": QtGui.QColor("#e57373"),  # Bright Red
-            "▲": QtGui.QColor("#e57373"),  # Bright Red
-            "Z": QtGui.QColor("#e57373"),  # Bright Red
-        }.get(sclass, QtGui.QColor("#e0e0e0"))
+        return theme.color({
+            "HS": "route_hs",
+            "LS": "route_ls",
+            "NS": "route_ns",
+            "▲": "route_ns",
+            "Z": "route_ns",
+        }.get(sclass, "route_other"))
 
     def add_data_to_table(self, route):
         self.tableWidget_path.setRowCount(len(route))
@@ -1254,6 +1324,7 @@ class MainWindow(QtWidgets.QMainWindow):
         }
 
     def _clear_results(self):
+        self._last_route = None
         self.tableWidget_path.setRowCount(0)
         self.lineEdit_short_format.setText("")
 
@@ -1307,26 +1378,33 @@ class MainWindow(QtWidgets.QMainWindow):
         if route_length == 1:
             self._path_message("Set the same source and destination :P", MessageType.OK)
         else:
-            source_color = self.get_system_class_color(route[0]["class"]).name()
-            dest_color = self.get_system_class_color(route[-1]["class"]).name()
+            self._render_route_summary(route)
 
-            jumps = route_length - 1
-            self.label_status.setText(
-                '<span style="font-size: 20pt; color: #e5c07b">{}</span> {} FROM <span style="color:{}">{}</span> TO <span style="color:{}">{}</span>'.format(
-                    jumps,
-                    "JUMP" if jumps == 1 else "JUMPS",
-                    source_color,
-                    route[0]["name"].upper(),
-                    dest_color,
-                    route[-1]["name"].upper(),
-                )
-            )
-            self.label_status.setStyleSheet(
-                "QLabel {color: white; font-weight: bold; font-size: 12pt;}"
-            )
-
+        self._last_route = route
         self.add_data_to_table(route)
         self.lineEdit_short_format.setText(short_format)
+
+    def _render_route_summary(self, route):
+        """'3 JUMPS FROM PERIMETER TO 1DQ1-A', endpoints in their class colors."""
+        self._path_state = ("route", route)
+        source_color = self.get_system_class_color(route[0]["class"]).name()
+        dest_color = self.get_system_class_color(route[-1]["class"]).name()
+
+        jumps = len(route) - 1
+        self.label_status.setText(
+            '<span style="font-size: 20pt; color: {}">{}</span> {} FROM <span style="color:{}">{}</span> TO <span style="color:{}">{}</span>'.format(
+                theme["jump_count"],
+                jumps,
+                "JUMP" if jumps == 1 else "JUMPS",
+                source_color,
+                route[0]["name"].upper(),
+                dest_color,
+                route[-1]["name"].upper(),
+            )
+        )
+        self.label_status.setStyleSheet(
+            theme.qss("QLabel {color: @text_strong; font-weight: bold; font-size: 12pt;}")
+        )
 
     def short_format_click(self, event):
         event.accept()
@@ -1369,49 +1447,62 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _status_eve_connection_update(self):
         """The identity row IS the EVE connection status display."""
+        self._render_identity()
+        if self.state_eve_connection["connected"]:
+            self._load_portrait(self.state_eve_connection["char_id"])
+        elif not self.state_eve_connection["error"]:
+            self._load_portrait(1)
+
+    def _render_identity(self):
+        """Paint the identity row for the current state and theme. No network:
+        a theme change re-runs this without refetching the portrait."""
+        t = theme.tokens()
+        sep = '<span style="color:{}"> · </span>'.format(t["text_faint"])
+        self.lbl_portrait.setStyleSheet(
+            theme.qss("border: 1px solid @border; background-color: @field;")
+        )
+
         if self.state_eve_connection["connected"]:
             self.pushButton_player_location.setEnabled(True)
             self.pushButton_set_dest.setEnabled(True)
 
             if self.state_eve_connection["char_name"]:
                 self.lbl_header.setText(self.state_eve_connection["char_name"].upper())
-                self.lbl_header.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
+                self.lbl_header.setStyleSheet(
+                    theme.qss("color: @link; font-weight: bold; font-size: 14px;")
+                )
             self.lbl_connection.setText(
-                '<span style="color:#98c379">Connected</span>'
-                '<span style="color:#5c6370"> · </span>'
-                '<span style="color:#61afef">Log out</span>'
+                '<span style="color:{}">Connected</span>{}<span style="color:{}">Log out</span>'.format(
+                    t["status_ok"], sep, t["link"]
+                )
             )
-            self._set_status_badge("#98c379")
+            self._set_status_badge(t["status_ok"])
             self.lbl_portrait.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
             self.lbl_portrait.setToolTip(
                 "Logged in as {}".format(self.state_eve_connection["char_name"])
             )
-
-            self._load_portrait(self.state_eve_connection["char_id"])
             return
 
         if self.state_eve_connection["error"]:
             self.lbl_connection.setText(
-                '<span style="color:#e06c75">{}</span>'
-                '<span style="color:#5c6370"> · </span>'
-                '<span style="color:#61afef">Retry</span>'.format(
-                    self.state_eve_connection["error"]
+                '<span style="color:{}">{}</span>{}<span style="color:{}">Retry</span>'.format(
+                    t["status_error"], self.state_eve_connection["error"], sep, t["link"]
                 )
             )
-            self._set_status_badge("#e06c75")
+            self._set_status_badge(t["status_error"])
             return
 
         self.pushButton_player_location.setEnabled(False)
         self.pushButton_set_dest.setEnabled(False)
 
         self.lbl_header.setText("DAYTRIPPER")
-        self.lbl_header.setStyleSheet("color: #dcdcdc; font-weight: bold; font-size: 14px;")
-        self.lbl_connection.setText('<span style="color:#61afef">Log in with EvE</span>')
-        self._set_status_badge("#5c6370")
+        self.lbl_header.setStyleSheet(theme.qss("color: @text; font-weight: bold; font-size: 14px;"))
+        self.lbl_connection.setText(
+            '<span style="color:{}">Log in with EvE</span>'.format(t["link"])
+        )
+        self._set_status_badge(t["text_faint"])
         self.lbl_portrait.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.lbl_portrait.setToolTip("Log in with EVE")
-
-        self._load_portrait(1)
 
     @QtCore.Slot()
     def _portrait_clicked(self):
@@ -1422,7 +1513,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _set_status_badge(self, color):
         self.lbl_status_badge.setStyleSheet(
-            "background-color: {}; border: 2px solid #21252b; border-radius: 8px;".format(color)
+            "background-color: {}; border: 2px solid {}; border-radius: 8px;".format(
+                color, theme["panel"]
+            )
         )
 
     def _update_sources_status(self):
@@ -1445,27 +1538,31 @@ class MainWindow(QtWidgets.QMainWindow):
         mapper_word = "mapper" if active_count == 1 else "mappers"
         if active_count > 0 and not has_errors and self._last_fetch_at is None:
             # Before the first fetch "0 connections" would read as a problem.
-            self._set_pill("#abb2bf", f"{active_count} {mapper_word} · awaiting first fetch")
+            self._set_pill("text_secondary", f"{active_count} {mapper_word} · awaiting first fetch")
         elif has_errors:
             self._set_pill(
-                "#e06c75",
+                "status_error",
                 f"<b>{active_count} {mapper_word} · {total_connections} connections · errors</b>",
             )
         elif active_count > 0:
             self._set_pill(
-                "#98c379", f"{active_count} {mapper_word} · {total_connections} connections"
+                "status_ok", f"{active_count} {mapper_word} · {total_connections} connections"
             )
         else:
-            self._set_pill("#abb2bf", "No mappers", action="Add one")
+            self._set_pill("text_secondary", "No mappers", action="Add one")
 
-    def _set_pill(self, color, status_html, action="Manage"):
+    def _set_pill(self, color_token, status_html, action="Manage"):
         """Status pill content: colored status text plus a link-colored
         action word so the pill reads as clickable at a glance."""
+        # Remembered so a theme change mid-fetch repaints "Refreshing…",
+        # not a stale count.
+        self._pill_args = (color_token, status_html, action)
+        t = theme.tokens()
         self.status_sources_widget.setText(
             '<span style="color:{c}">●&nbsp;&nbsp;{s}</span>'
-            '<span style="color:#5c6370">&nbsp;&nbsp;·&nbsp;&nbsp;</span>'
-            '<span style="color:#61afef">{a} ⚙</span>'.format(
-                c=color, s=status_html, a=action
+            '<span style="color:{f}">&nbsp;&nbsp;·&nbsp;&nbsp;</span>'
+            '<span style="color:{l}">{a} ⚙</span>'.format(
+                c=t[color_token], s=status_html, f=t["text_faint"], l=t["link"], a=action
             )
         )
 
@@ -1638,7 +1735,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.worker_thread.isRunning():
             self.pushButton_trip_get.setEnabled(False)
             self.pushButton_find_path.setEnabled(False)
-            self._set_pill("#abb2bf", "Refreshing mappers…")
+            self._set_pill("text_secondary", "Refreshing mappers…")
             self.worker_thread.start()
         else:
             self._update_sources_status()
@@ -1694,12 +1791,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def line_edit_destination_return(self):
         self.find_path()
 
-    def _table_style(self, red_value, green_value, blue_value):
+    def _table_style(self, pick_token):
         self.tableWidget_path.setStyleSheet(
-            "selection-color: white; selection-background-color: rgb({}, {}, {});".format(
-                red_value,
-                green_value,
-                blue_value,
+            theme.qss(
+                "selection-color: @on_pick; selection-background-color: @{};".format(pick_token)
             )
         )
 
@@ -1709,13 +1804,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if selection:
             sys_class = selection[1].text()
             if sys_class == "HS":
-                self._table_style(60, 90, 60)
+                self._table_style("pick_hs")
             elif sys_class == "LS":
-                self._table_style(90, 80, 40)
+                self._table_style("pick_ls")
             elif sys_class == "NS":
-                self._table_style(90, 50, 50)
+                self._table_style("pick_ns")
             else:
-                self._table_style(50, 70, 90)
+                self._table_style("pick_wh")
 
             self.lineEdit_set_dest.setText(selection[0].text())
 
@@ -1836,39 +1931,11 @@ def run():
 
         QtGui.QDesktopServices.openUrl = open_url_linux
 
-    # Dark base theme via Qt's built-in Fusion style + a One-Dark palette.
-    # This replaces the archived pyqtdarktheme dependency (which cannot be
-    # installed on Python >= 3.12): Fusion + palette covers the native
-    # widgets (dialogs, menus, combo popups) on every platform, and the
-    # MainWindow stylesheet in _apply_styles() does the rest.
-    appl.setStyle("Fusion")
-    palette = QtGui.QPalette()
-    base = QtGui.QColor("#1b1e23")
-    panel = QtGui.QColor("#21252b")
-    field = QtGui.QColor("#282c34")
-    text = QtGui.QColor("#dcdcdc")
-    accent = QtGui.QColor("#00aaff")
-    disabled = QtGui.QColor("#5c6370")
-    palette.setColor(QtGui.QPalette.ColorRole.Window, base)
-    palette.setColor(QtGui.QPalette.ColorRole.WindowText, text)
-    palette.setColor(QtGui.QPalette.ColorRole.Base, field)
-    palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, panel)
-    palette.setColor(QtGui.QPalette.ColorRole.Text, text)
-    palette.setColor(QtGui.QPalette.ColorRole.Button, panel)
-    palette.setColor(QtGui.QPalette.ColorRole.ButtonText, text)
-    palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, panel)
-    palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, text)
-    palette.setColor(QtGui.QPalette.ColorRole.Highlight, accent)
-    palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor("white"))
-    palette.setColor(QtGui.QPalette.ColorRole.Link, accent)
-    palette.setColor(QtGui.QPalette.ColorRole.PlaceholderText, disabled)
-    for role in (
-        QtGui.QPalette.ColorRole.WindowText,
-        QtGui.QPalette.ColorRole.Text,
-        QtGui.QPalette.ColorRole.ButtonText,
-    ):
-        palette.setColor(QtGui.QPalette.ColorGroup.Disabled, role, disabled)
-    appl.setPalette(palette)
+    # Fusion style + a palette from the theme tokens. Fusion + palette
+    # covers the native widgets (dialogs, menus, combo popups) on every
+    # platform; the MainWindow stylesheet does the rest. MainWindow then
+    # applies the saved light/dark/system choice.
+    theme.install(appl)
 
     form = MainWindow()
     form.show()
