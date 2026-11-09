@@ -163,6 +163,11 @@ def build(sde_only=False):
         # Exclude QML/Quick to avoid plugin issues on macOS (libqtuiotouchplugin.dylib)
         "--exclude-module=PySide6.QtQml",
         "--exclude-module=PySide6.QtQuick",
+        # setuptools 81+ no longer ships pkg_resources, but the macOS CI
+        # Python still resolves an empty pkg_resources namespace. Bundling it
+        # adds PyInstaller's pkg_resources startup hook, which crashes before
+        # the app runs ("no attribute 'NullProvider'"). Nothing here uses it.
+        "--exclude-module=pkg_resources",
     ]
 
     # Add application icon
