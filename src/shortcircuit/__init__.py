@@ -6,7 +6,7 @@
 
 __appname__ = 'Short Circuit'
 __appslug__ = 'shortcircuit'
-__version__ = '3.0.0-dev'
+__version__ = '3.0.0'
 __date__ = '2026-11-08'
 USER_AGENT = '{} v{} ({}); https://github.com/mogglemoss/shortcircuit'.format(
   __appname__,

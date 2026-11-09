@@ -5,28 +5,28 @@
 
 > ⚠️ This is a personal project. It is not ready for primetime and, if past performance is any indicator, it may never be. If you require something stable, maintained, and built by someone who knew what they were doing from the start, please see [secondfry's defacto version](https://github.com/secondfry/shortcircuit). That one has adults in charge. This one has me, [Cormorant Fell](https://evewho.com/character/93594488).
 
-![Short Circuit UI](docs/Daytripper.png)
+![Short Circuit, dark mode, with a route across two wormholes](docs/screenshot-dark.png)
 
-**Short Circuit** is an advanced, standalone routing and navigation tool for EVE Online. It calculates the absolute shortest path between solar systems by seamlessly blending standard stargate routes with live wormhole connections pulled from your favorite third-party mapping tools.
+**Short Circuit** is a standalone routing and navigation tool for EVE Online. It calculates the shortest path between solar systems by blending standard stargate routes with live wormhole connections pulled from your favorite third-party mapping tools.
 
 Whether you're running logistics, hunting targets, or daytripping through J-space with the quiet confidence of someone who has absolutely no idea what's on the other side of that wormhole, Short Circuit takes the guesswork out of traversing New Eden — and replaces it with a different, more interesting set of mistakes. Progress.
+
+Since 3.0, this fork is built on [secondfry's](https://github.com/secondfry/shortcircuit) current core (the mapper architecture, the map, the auth) with my layout, themes and extra mappers on top, and the improvements offered back upstream as pull requests.
 
 ---
 
 ## ✨ Features
 
-![Short Circuit Config](docs/Daytripperconfig.png)
+**Intelligent Hybrid Routing** calculates optimized paths across High Sec, Low Sec, Null Sec, and Wormhole space in seconds. The routing engine builds a transient graph from live data, computes the shortest path, and silently respects your avoidance lists and wormhole size restrictions without once asking for your reasons. It's doing an enormous amount of math. An acknowledgment would not go unappreciated.
 
-**Intelligent Hybrid Routing** calculates optimized paths across High Sec, Low Sec, Null Sec, and Wormhole space in seconds. The routing engine builds a transient graph from resolved live data, computes the shortest path, and silently respects your avoidance lists and wormhole size restrictions without once asking for your reasons. It's doing an enormous amount of math. An acknowledgment would not go unappreciated.
-
-**Multi-Source Aggregation** connects simultaneously to multiple mapping tools — your corp's Tripwire instance, your personal Wanderer map, Eve-Scout, and more, all at once. Multiple accounts from the same provider are fully supported, because sometimes you have trust issues and that's fine. All incoming data is funneled into a centralized **Connection Database** that handles deduplication, conflict resolution, and freshness tracking. When sources disagree on wormhole status — and they will disagree — it favors the most recently updated data. This is as close to wisdom as software gets.
+**Multi-Mapper Aggregation** reads several mapping tools at once — your corp's Tripwire, your alliance's Wanderer map, Eve-Scout, and more. Several accounts on the same provider are fully supported, because sometimes you have trust issues and that's fine. When two maps report the same wormhole, Short Circuit matches them by signature, merges them into one connection, and keeps the fresher report. When two genuinely different holes link the same pair of systems, both are kept, and the router picks whichever one your ship can actually use. This is as close to wisdom as software gets.
 
 **Supported mapping platforms:**
 
-![Short Circuit Sources](docs/Daytrippersources.png)
 - **[Eve-Scout](https://eve-scout.com/)** — Automatic Thera & Turnur connections, delivered silently and without ceremony
-- **[Tripwire](https://tripwire.eve-apps.com/)** — Full support with per-source toggles and targeted refresh
-- **[Wanderer](https://wanderer.space/)** — Full support with per-source toggles and targeted refresh
+- **[Tripwire](https://tripwire.eve-apps.com/)** — Your corp or alliance chain, with your account
+- **[Wanderer](https://wanderer.space/)** — Any map you have an API token for
+- **[Pathfinder](https://github.com/exodus4d/pathfinder)** — Instances that publish a JSON connections export
 
 **Granular Route Filtering** gives you fine-grained control over which paths Short Circuit will even consider dignifying with a response:
 
@@ -34,11 +34,19 @@ Whether you're running logistics, hunting targets, or daytripping through J-spac
 - **Security Prioritization** — Four sliders (1–100) let you express your nuanced personal feelings about High Sec, Low Sec, Null Sec, and WH space. Equal values disable the feature entirely. Set Null Sec to 100 and the router will heroically thread you through three consecutive wormholes before it will so much as glance at a null gate. The router has opinions. They are adjustable.
 - **Avoidance List** — Blacklist specific solar systems or entire regions. Short Circuit does not ask why. Short Circuit understands.
 
-**EVE SSO Integration** (optional) reads your current in-game location automatically and sets route waypoints directly in the client. The tool works perfectly without it. You'll simply be required to type your location manually, like some kind of animal.
+**Launch, Type, Go.** On a returning launch you're logged back in without a browser trip, your current system is already in the Source field, and your mappers have already been fetched. What remains is typing a destination. A ⇄ button swaps Source and Destination for the trip home.
+
+**EVE SSO Integration** (optional) reads your current in-game location and sets waypoints directly in the client. Log in once: the session is kept in your operating system's keychain (macOS Keychain, Windows Credential Manager, or Linux Secret Service), never in a plain file, and resumes on the next launch. The tool works perfectly without it. You'll simply be required to type your location manually, like some kind of animal.
 
 **Fleet-Friendly Exporting** copies your route as clean fleet-chat text (`Jita --> ... --> Iyen-Oursta [HVE-768] ~~> J153528`) or as a full detailed instruction table with jump instructions, signature IDs, and wormhole status — all with a single click. Efficient. Professional. Deeply unlikely to save you from a smartbomb.
 
-**Status Bar Integration** provides real-time feedback: quick source toggles, targeted per-source manual refresh, and relative "Last Updated" freshness timestamps for every active provider. Because stale wormhole data is not a bug. It is a complimentary lesson, delivered at market rates.
+**Mapper Status at a Glance** — a pill at the top of the window shows how many mappers are active and how many connections they returned, turns red when a fetch fails, and opens the mapper settings when clicked. Short Circuit fetches once when it starts and otherwise only when you press **Refresh Mappers**: it does not poll anyone's servers while you're not looking. If you route on data more than 15 minutes old, it says so. Stale wormhole data is not a bug. It is a complimentary lesson, delivered at market rates.
+
+**Light, Dark, or Auto** — the **Appearance** menu switches between a dark theme, a light one, and Auto, which follows your operating system. Every piece of text meets the WCAG contrast guideline in both, because squinting is not a feature.
+
+![Short Circuit, light mode](docs/screenshot-light.png)
+
+**Corp Brand Packs** — the Appearance menu also takes a corp's brand pack: its colors in both modes, its name on the letterhead, and its emblem in the portrait slot while you're logged out. Packs use the same `brand.json` format as [my Tripwire fork](https://github.com/mogglemoss/tripwire), so one pack themes a corp's map and its router alike. Security and wormhole-class colors never change with the brand: green still means high sec, whoever's colors you're flying.
 
 ---
 
@@ -57,27 +65,27 @@ No wallet. No mail. No corp APIs. No scanning your bookmarks, your contacts, you
 
 ## 🚀 Installation
 
-Pre-compiled binaries are available on the [Releases page](https://github.com/mogglemoss/shortcircuit/releases) for those who prefer their software pre-assembled.
+Pre-compiled binaries for macOS (universal), Windows, and Linux (AppImage or tarball) are on the [Releases page](https://github.com/mogglemoss/shortcircuit/releases) for those who prefer their software pre-assembled.
 
-**Running from Source** — Python 3 required. A willingness to read error messages helps but is not strictly mandatory:
+**Running from Source** — Python 3.10–3.13 required. A willingness to read error messages helps but is not strictly mandatory:
 ```bash
 git clone https://github.com/mogglemoss/shortcircuit.git
 cd shortcircuit
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+python src/main.py
 ```
 
-SDE database files are automatically checked and downloaded from [Fuzzwork](https://github.com/fuzzysteve) during the build process. Thank you, fuzzysteve (Steve Ronuken) — a true and tireless pillar of this community, who has quietly enabled more third-party tools than anyone will ever properly document. He deserves more credit than he gets, and he gets quite a lot.
+The solar system data ships with the source. Builds refresh it from [Fuzzwork](https://github.com/fuzzysteve)'s SDE dumps. Thank you, fuzzysteve (Steve Ronuken) — a true and tireless pillar of this community, who has quietly enabled more third-party tools than anyone will ever properly document. He deserves more credit than he gets, and he gets quite a lot.
 
 ---
 
 ## ⚙️ Quick Start
 
-1. **Connect your sources** — Click *Wormhole Sources* in the top right to configure Tripwire, Wanderer, and Eve-Scout
-2. **Log in with EVE** *(optional)* — Authenticate via EVE SSO to enable auto-location and in-client waypoint setting
-3. **Set your route** — Enter source and destination systems in the Navigation panel
+1. **Connect your mappers** — Click the mapper pill at the top (it reads *Mappers not set up · Set up* on a fresh install), then give the default Tripwire entry your account, or add Wanderer, Pathfinder, or Eve-Scout
+2. **Log in with EVE** *(optional)* — Click *Log in with EvE* under the portrait, once. From then on you stay logged in, and your location fills the Source field by itself
+3. **Set your route** — Type a destination in the route bar (and a source, if you didn't log in)
 4. **Configure restrictions** — Set ship size limits, adjust security sliders, and populate your avoidance list based on what you're flying and who is currently motivated to kill you specifically
 5. **Hit Find Path** — Jump instructions, signature IDs, and wormhole status appear in the Route Results table. What you do with this information is entirely your own affair.
 
@@ -85,23 +93,38 @@ SDE database files are automatically checked and downloaded from [Fuzzwork](http
 
 ## How It Works
 
-Short Circuit reconstructs its own version of the EVE solar map from the `mapSolarSystemJumps` table of the Static Data Export database — a painstaking process that the software completes in the background without complaint. This base map is then extended with live wormhole connections aggregated from all configured third-party sources.
+Short Circuit reconstructs its own version of the EVE solar map from the `mapSolarSystemJumps` table of the Static Data Export database — a painstaking process that the software completes in the background without complaint. This base map is then extended with live wormhole connections from every enabled mapper.
 
-All incoming data flows into the centralized **Connection Database**, which applies three ruthlessly pragmatic principles:
+Wormhole reports from different mappers are reconciled on the way in:
 
-1. **Deduplication** — The same connection reported by multiple sources is counted once. Democracy has limits.
-2. **Conflict Resolution** — Permanent gates take priority over transient wormholes. The universe has rules, even if players don't.
-3. **Freshness Tracking** — When sources disagree on wormhole status, the most recently updated data wins. The past is unreliable. We've made our peace with that.
+1. **Matching** — Two reports describe the same wormhole when a signature ID matches on either side. Signatures are unique per system, so one match is decisive. Democracy has limits.
+2. **Merging** — Matched reports become one connection that remembers every mapper that reported it, fills in any signature or wormhole type one map was missing, and keeps the fresher report's size, life, and mass. The past is unreliable. We've made our peace with that.
+3. **Keeping parallel holes apart** — Two different wormholes between the same pair of systems stay separate, so a destabilized hole doesn't hide a healthy one next to it. The router checks each and takes the cheapest one your restrictions allow.
 
-The routing engine constructs a transient graph from this resolved data and computes the shortest path in accordance with your avoidance lists and size restrictions.
+The route table's *Reported by* line shows which mappers vouched for each hop.
 
 **Security prioritization** assigns an "effort" weight (1–100) to each jump type: HS, LS, NS, and WH. Equal weights across all four disable the system entirely, treating a null sec gate and a high sec gate as morally equivalent, which they are not. Raise any value and the router will work increasingly hard to avoid that jump type — routing around null sec, for instance, until avoiding it would cost more jumps than it saves. Configure it to match your risk tolerance, your ship type, and the number of losses you've had this week.
 
 ---
 
-## Managing Map Sources
+## Managing Mappers
 
-The **Wormhole Sources** dialog is the unified interface for all your data providers. Add, remove, and configure Tripwire, Wanderer, and Eve-Scout in one place. The built-in "Test Connection" feature verifies credentials immediately, so you can confirm a source is working before you trust your route to it. The status bar provides per-source freshness timestamps, quick enable/disable toggles, and targeted manual refresh for when a source requires gentle encouragement.
+![The Mappers dialog](docs/mappers.png)
+
+Click the mapper pill to open the **Mappers** dialog: every configured source with its type, a one-line summary (the Tripwire account, the Wanderer map — never a password or token), and an Enabled checkbox. **Add** asks which kind of mapper you want and tells you what each one needs before you commit to anything.
+
+---
+
+## Appearance and Brand Packs
+
+**Appearance** (top right) holds two choices:
+
+- **Mode** — *Auto* follows your operating system's light or dark setting and switches with it; *Light* and *Dark* pin one.
+- **Brand** — Short Circuit's own look, or any brand pack you've imported.
+
+To add a corp's pack, choose **Import brand pack…** and pick the pack's folder (the one containing `brand.json`). It's copied into your user data folder, applied immediately, and listed from then on; **Remove** takes it out again. Corp leaders: the pack format is the one documented in [the Tripwire fork's README](https://github.com/mogglemoss/tripwire#brand-packs). Only plain `#rrggbb` colors are accepted, and where a corp's accent would make text hard to read, Short Circuit adjusts the text, never the corp's color.
+
+The public builds ship no corp packs. A corp that wants its own pre-branded build can drop its pack into `src/shortcircuit/brand_packs/` before building; that folder is git-ignored, so a pack never ends up in this repository.
 
 ---
 
@@ -118,8 +141,8 @@ Fly accordingly.
 ## 🙌 Credits & Acknowledgments
 
 - **[farshield](https://github.com/farshield/shortcircuit)** — Built the original Short Circuit. An absolute legend who started all of this.
-- **[secondfry](https://github.com/secondfry/shortcircuit)** — Kept the lights on through years of ESI changes and CCP's creative approach to API stability. Also a legend. Arguably more of a legend, given the sustained and thankless nature of the effort.
-- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added multi-source aggregation, Wanderer support, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud boomerang of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
+- **[secondfry](https://github.com/secondfry/shortcircuit)** — Kept the lights on through years of ESI changes and CCP's creative approach to API stability, and built the modern core this fork now stands on. Also a legend. Arguably more of a legend, given the sustained and thankless nature of the effort.
+- **[mogglemoss](https://github.com/mogglemoss/shortcircuit)** / [Cormorant Fell](https://evewho.com/character/93594488) — Added Wanderer and Pathfinder support, themes and brand packs, made it prettier, introduced an undisclosed number of new bugs, and wrote this README. Proud boomerang of [WiNGSPAN Delivery Services](https://www.torpedodelivery.com/), where the torpedoes were always free and the targets were always surprised.
 
 ---
 
