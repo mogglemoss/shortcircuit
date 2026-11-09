@@ -52,6 +52,10 @@ class AddMapperTypeDialog(QtWidgets.QDialog):
 
     self.list_types = QtWidgets.QListWidget()
     self.list_types.setSpacing(2)
+    # Descriptions wrap rather than clip behind a horizontal scrollbar;
+    # how much fits on a line depends on the platform's font.
+    self.list_types.setWordWrap(True)
+    self.list_types.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     for type_key, label in MAPPER_TYPE_LABELS.items():
       item = QtWidgets.QListWidgetItem()
       item.setData(QtCore.Qt.ItemDataRole.UserRole, type_key)
