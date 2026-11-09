@@ -22,3 +22,7 @@ src/database/*.csv
 # macOS System Files
 .DS_Store
 ._*
+# Brand packs: only the README is tracked. A corp copies its own pack in
+# for a private build; see src/shortcircuit/brand_packs/README.md.
+src/shortcircuit/brand_packs/*
+!src/shortcircuit/brand_packs/README.md

@@ -156,6 +156,9 @@ def build(sde_only=False):
         "--onedir",  # Create a directory bundle
         "--noconfirm",  # Overwrite output directory
         f"--add-data={add_data}",  # Include database files
+        # Bundled brand packs (empty in the public build; a corp's private
+        # build copies its pack in first). brands.bundled_dir() reads it.
+        f"--add-data={os.path.join(src_path, 'shortcircuit', 'brand_packs')}{separator}brand_packs",
         f"--paths={src_path}",  # Add src to python path
         # Exclude QML/Quick to avoid plugin issues on macOS (libqtuiotouchplugin.dylib)
         "--exclude-module=PySide6.QtQml",

@@ -143,6 +143,22 @@ class Theme(QtCore.QObject):
     super().__init__()
     self._mode = "system"
     self._app = None
+    self._brand = None  # a pack from brands.load_pack(), or None
+
+  # ----- brand -----
+
+  @property
+  def brand(self):
+    return self._brand
+
+  def set_brand(self, pack):
+    """Apply a brand pack's UI tokens on top of the defaults (None for the
+    default look). Data tokens are never affected."""
+    if (pack or {}).get("slug") == (self._brand or {}).get("slug"):
+      return
+    self._brand = pack
+    self._apply_palette()
+    self.changed.emit()
 
   # ----- mode -----
 
@@ -193,9 +209,13 @@ class Theme(QtCore.QObject):
   # ----- tokens -----
 
   def tokens(self):
-    if self.is_dark():
-      return {**DARK, **DATA_DARK}
-    return {**LIGHT, **DATA_LIGHT}
+    mode = "dark" if self.is_dark() else "light"
+    ui = dict(DARK if mode == "dark" else LIGHT)
+    if self._brand:
+      # Only names the default set already has: a pack can restyle the
+      # look, never introduce or override a data token.
+      ui.update({k: v for k, v in self._brand["ui"].get(mode, {}).items() if k in ui})
+    return {**ui, **(DATA_DARK if mode == "dark" else DATA_LIGHT)}
 
   def __getitem__(self, name):
     return self.tokens()[name]

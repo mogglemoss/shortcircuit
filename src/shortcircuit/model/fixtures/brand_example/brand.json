@@ -1,0 +1,81 @@
+{
+  "corp": "Your Corp",
+  "short": "YOURCORP",
+  "tagline": "Wormhole mapping",
+  "description": "Your Corp's wormhole map: signatures, chains and pilot tracking.",
+  "logo": {
+    "dark": "logo-dark.png",
+    "light": "logo-light.png",
+    "lockup": null
+  },
+  "mark": "mark.png",
+  "mark_rotate": 0,
+  "landing_mark": "mark.png",
+  "landing_bg": null,
+  "icons": {
+    "192": "icon-192.png",
+    "512": "icon-512.png",
+    "maskable": "icon-maskable-512.png",
+    "apple": "apple-touch-icon.png",
+    "favicon": "favicon-32.png"
+  },
+  "fonts": {
+    "google": "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;700&display=swap",
+    "ui": "'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    "mono": "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace",
+    "display": "'Geist', system-ui, sans-serif",
+    "brand": "'Geist', system-ui, sans-serif"
+  },
+  "accent": {
+    "dark": "#3fb59a",
+    "on-dark": "#0e1a17",
+    "light": "#1f8f78",
+    "on-light": "#ffffff"
+  },
+  "palette": {
+    "dark": {
+      "background": "#141a19",
+      "foreground": "#eaf1ee",
+      "card": "#1b2321",
+      "card-foreground": "#eaf1ee",
+      "popover": "#222c29",
+      "popover-foreground": "#eaf1ee",
+      "muted": "#222c29",
+      "muted-foreground": "#86958f",
+      "text-body": "#b2c0ba",
+      "accent-surface": "#222c29",
+      "border": "#3d4a46",
+      "border-soft": "#29332f",
+      "border-strong": "#52615c",
+      "input": "#29332f",
+      "glow": "#1d2624",
+      "destructive": "#e05252",
+      "node-surface": "#222c29",
+      "node-edge": "#52615c",
+      "chart-gridline": "rgba(234, 241, 238, .06)",
+      "chart-axis-text": "#b2c0ba"
+    },
+    "light": {
+      "background": "#e6ece9",
+      "foreground": "#18211e",
+      "card": "#f3f7f5",
+      "card-foreground": "#18211e",
+      "popover": "#fbfdfc",
+      "popover-foreground": "#18211e",
+      "muted": "#dde5e1",
+      "muted-foreground": "#6b7a74",
+      "text-body": "#3d4a46",
+      "accent-surface": "#dde5e1",
+      "border": "#a9b7b1",
+      "border-soft": "#d0dad5",
+      "border-strong": "#86958f",
+      "input": "#dde5e1",
+      "glow": "#ffffff",
+      "destructive": "#b03a3a",
+      "node-surface": "#fbfdfc",
+      "node-edge": "#a9b7b1",
+      "chart-gridline": "rgba(24, 33, 30, .08)",
+      "chart-axis-text": "#3d4a46"
+    }
+  }
+}

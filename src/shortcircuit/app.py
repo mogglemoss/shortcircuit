@@ -27,6 +27,7 @@ from .model.mapper_config import (
 from .model.navigation import Navigation
 from .model.navprocessor import NavProcessor
 from .model.versioncheck import VersionCheck
+from . import brands
 from .theme import theme
 from .view import resources_rc  # noqa: F401 — registers Qt resources (:/images/...)
 
@@ -184,6 +185,16 @@ MAIN_QSS = """
         padding: 0;
     }
 
+    /* Appearance menu button: the drop-down arrow sits beside the label */
+    QPushButton#pushButton_theme {
+        padding-right: 26px;
+    }
+    QPushButton#pushButton_theme::menu-indicator {
+        subcontrol-origin: padding;
+        subcontrol-position: right center;
+        right: 10px;
+    }
+
     /* Mapper status pill (clickable; hover confirms it) */
     QLabel#status_pill {
         border: 1px solid @border;
@@ -271,6 +282,8 @@ class NameLabel(QtWidgets.QLabel):
         super().__init__(parent)
         self._full_text = text
         self._max_lines = max_lines
+        # Character and corp names are data, never markup.
+        self.setTextFormat(QtCore.Qt.TextFormat.PlainText)
         # Take the width the row offers instead of demanding the full
         # single-line width of the name.
         self.setSizePolicy(
@@ -556,10 +569,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_sources_widget = ClickableLabel()
         self.status_sources_widget.setObjectName("status_pill")
         self.status_sources_widget.setToolTip("Click to configure mappers")
-        # Light / dark toggle: cycles Auto (follow the OS) -> Light -> Dark.
-        # The label always names the current mode; the tooltip names the next.
-        self.pushButton_theme = QtWidgets.QPushButton()
+        # Appearance: one menu for light/dark mode and the corp brand pack.
+        # Rebuilt each time it opens, so a just-imported pack is listed.
+        self.pushButton_theme = QtWidgets.QPushButton("Appearance")
         self.pushButton_theme.setObjectName("pushButton_theme")
+        self.menu_appearance = QtWidgets.QMenu(self.pushButton_theme)
+        self.menu_appearance.aboutToShow.connect(self._build_appearance_menu)
+        self.pushButton_theme.setMenu(self.menu_appearance)
 
         self.pushButton_trip_get = QtWidgets.QPushButton("Refresh Mappers")
         self.pushButton_trip_get.setObjectName("pushButton_trip_get")
@@ -758,23 +774,111 @@ class MainWindow(QtWidgets.QMainWindow):
 
     THEME_LABELS = {"system": "◐  Auto", "light": "☀  Light", "dark": "☾  Dark"}
     THEME_NAMES = {"system": "Auto (follows your system)", "light": "Light", "dark": "Dark"}
+    DEFAULT_BRAND_NAME = "Short Circuit"
 
-    @QtCore.Slot()
-    def btn_theme_clicked(self):
-        mode = theme.next_mode()
+    @staticmethod
+    def _menu_heading(menu, text):
+        # QMenu.addSection draws a bare line under Fusion, so headings are
+        # disabled actions instead: visible, but not clickable.
+        if menu.actions():
+            menu.addSeparator()
+        heading = menu.addAction(text.upper())
+        heading.setEnabled(False)
+        font = heading.font()
+        font.setBold(True)
+        font.setPointSizeF(font.pointSizeF() * 0.85)
+        heading.setFont(font)
+
+    def _build_appearance_menu(self):
+        menu = self.menu_appearance
+        menu.clear()
+
+        self._menu_heading(menu, "Mode")
+        modes = QtGui.QActionGroup(menu)
+        for mode in ("system", "light", "dark"):
+            action = menu.addAction(self.THEME_LABELS[mode])
+            action.setCheckable(True)
+            action.setChecked(theme.mode == mode)
+            action.setActionGroup(modes)
+            action.triggered.connect(partial(self._choose_mode, mode))
+
+        self._menu_heading(menu, "Brand")
+        current = (theme.brand or {}).get("slug")
+        group = QtGui.QActionGroup(menu)
+        choices = [(None, self.DEFAULT_BRAND_NAME)] + [
+            (pack["slug"], pack["name"]) for pack in brands.list_packs()
+        ]
+        for slug, name in choices:
+            action = menu.addAction(name)
+            action.setCheckable(True)
+            action.setChecked(slug == current)
+            action.setActionGroup(group)
+            action.triggered.connect(partial(self._choose_brand, slug))
+
+        menu.addSeparator()
+        menu.addAction("Import brand pack…").triggered.connect(self._import_brand)
+        pack = brands.find_pack(current) if current else None
+        if pack and pack["imported"]:
+            menu.addAction("Remove {}".format(pack["name"])).triggered.connect(
+                partial(self._remove_brand, current)
+            )
+
+    def _choose_mode(self, mode, _checked=False):
         theme.set_mode(mode)
         self.settings.setValue("theme_mode", mode)
         # set_mode only signals when the colors actually change (Auto ->
-        # Light on a light OS doesn't), but the label always must.
+        # Light on a light OS doesn't), but the button always must.
         self._update_theme_button()
 
-    def _update_theme_button(self):
-        self.pushButton_theme.setText(self.THEME_LABELS[theme.mode])
-        self.pushButton_theme.setToolTip(
-            "Theme: {} — click for {}".format(
-                self.THEME_NAMES[theme.mode], self.THEME_NAMES[theme.next_mode()]
-            )
+    def _choose_brand(self, slug, _checked=False):
+        pack = brands.find_pack(slug) if slug else None
+        theme.set_brand(brands.load_pack(pack["path"]) if pack else None)
+        self.settings.setValue("brand", slug or "")
+        self._update_theme_button()
+
+    @QtCore.Slot()
+    def _import_brand(self):
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Choose the brand pack folder (it contains brand.json)", os.path.expanduser("~")
         )
+        if not folder:
+            return
+        try:
+            slug = brands.import_pack(folder)
+        except (ValueError, OSError) as e:
+            self._message_box("Import brand pack", str(e))
+            return
+        self._choose_brand(slug)
+        self._toast("Brand pack imported: {}".format(theme.brand["name"] if theme.brand else slug))
+
+    def _remove_brand(self, slug, _checked=False):
+        pack = brands.find_pack(slug)
+        if not pack:
+            return
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Remove brand pack",
+            "Remove the {} brand pack from this computer? You can import it again later.".format(
+                pack["name"]
+            ),
+        )
+        if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        brands.remove_pack(slug)
+        self._choose_brand(None)
+
+    def _update_theme_button(self):
+        brand = theme.brand["name"] if theme.brand else self.DEFAULT_BRAND_NAME
+        self.pushButton_theme.setToolTip(
+            "Mode: {} · Brand: {}".format(self.THEME_NAMES[theme.mode], brand)
+        )
+
+    def _restore_brand(self):
+        slug = str(self.settings.value("brand", "") or "")
+        pack = brands.find_pack(slug) if slug else None
+        if slug and not pack:
+            Logger.warning("Saved brand pack '{}' is gone; using the default look".format(slug))
+        theme.set_brand(brands.load_pack(pack["path"]) if pack else None)
 
     @QtCore.Slot()
     def _restyle(self):
@@ -963,7 +1067,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_player_location.clicked.connect(self.btn_player_location_clicked)
         self.pushButton_find_path.clicked.connect(self.btn_find_path_clicked)
         self.pushButton_trip_get.clicked.connect(self.btn_trip_get_clicked)
-        self.pushButton_theme.clicked.connect(self.btn_theme_clicked)
         self.pushButton_system_avoid_add.clicked.connect(self.btn_system_avoid_add_clicked)
         self.pushButton_region_avoid_add.clicked.connect(self.btn_region_avoid_add_clicked)
         self.pushButton_avoid_delete.clicked.connect(self.btn_avoid_delete_clicked)
@@ -995,6 +1098,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def read_settings_general(self):
         self.global_proxy = self.settings.value("proxy", "")
         theme.set_mode(str(self.settings.value("theme_mode", "system")))
+        self._restore_brand()
         # Mapper configs: migrate_legacy handles both historic layouts (flat
         # MainWindow/tripwire_* keys and the fork's grouped Tripwire/* keys),
         # so the fork-era migration shim is gone.
@@ -1495,7 +1599,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pushButton_player_location.setEnabled(False)
         self.pushButton_set_dest.setEnabled(False)
 
-        self.lbl_header.setText("DAYTRIPPER")
+        # Logged out, the letterhead is the corp's name (or the app's own).
+        self.lbl_header.setText(theme.brand["short"].upper() if theme.brand else "DAYTRIPPER")
         self.lbl_header.setStyleSheet(theme.qss("color: @text; font-weight: bold; font-size: 14px;"))
         self.lbl_connection.setText(
             '<span style="color:{}">Log in with EvE</span>'.format(t["link"])
