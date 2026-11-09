@@ -52,21 +52,24 @@ DARK = {
   "on_action": "#1b1e23",
 }
 
+# Soft light: no surface is pure white. The app sits beside a very dark
+# game client, often at night, where a #ffffff window glares; off-white
+# panels read calm while text keeps ~15:1 contrast.
 LIGHT = {
-  "window": "#eceef2",
-  "panel": "#ffffff",
-  "sidebar_edge": "#d3d8df",
-  "field": "#f6f7f9",
-  "border": "#c4cad3",
-  "divider": "#e4e7ec",
-  "row_alt": "#f5f7fa",
-  "hover_surface": "#eaf2fc",
-  "selection": "#d6e4f7",
-  "scroll_handle": "#c0c6cf",
-  "button": "#e1e5ea",
-  "button_hover": "#d2d7de",
-  "button_pressed": "#c4cad3",
-  "button_disabled": "#eceef1",
+  "window": "#e2e5ea",
+  "panel": "#f4f5f7",
+  "sidebar_edge": "#cfd4db",
+  "field": "#eaedf1",
+  "border": "#c0c6cf",
+  "divider": "#dfe2e7",
+  "row_alt": "#eceff3",
+  "hover_surface": "#e6ecf5",
+  "selection": "#d0dff2",
+  "scroll_handle": "#bcc2cb",
+  "button": "#dce0e6",
+  "button_hover": "#cfd4db",
+  "button_pressed": "#c0c6cf",
+  "button_disabled": "#e7eaee",
   "on_button": "#1f2328",
   "text": "#1f2328",
   "text_strong": "#0d1117",
@@ -109,11 +112,11 @@ DATA_DARK = {
 }
 
 DATA_LIGHT = {
-  "sec_hs": "#2e7d32",
-  "sec_ls": "#9a6700",
+  "sec_hs": "#276b2b",
+  "sec_ls": "#845800",
   "sec_ns": "#c62828",
   "sec_wh": "#1565c0",
-  "route_hs": "#2e7d32",
+  "route_hs": "#276b2b",
   "route_ls": "#8a5d00",
   "route_ns": "#c62828",
   "route_wh": "#1565c0",
