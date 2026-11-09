@@ -248,6 +248,8 @@ class MappersDialog(QtWidgets.QDialog, Ui_MappersDialog):
       return "user: {}".format(cfg.user) if cfg.user else "no account set"
     if cfg.type == TYPE_PATHFINDER:
       return "token set" if cfg.password else "no token"
+    if cfg.type == TYPE_EVESCOUT:
+      return "public"
     return ""
 
   def _set_enabled(self, row: int, checked: bool):

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'gui_mappers.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.2
+## Created by: Qt User Interface Compiler version 6.9.3
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -92,8 +92,9 @@ class Ui_MappersDialog(object):
 
     def retranslateUi(self, MappersDialog):
         MappersDialog.setWindowTitle(QCoreApplication.translate("MappersDialog", u"Mappers", None))
-        self.label_intro.setText(QCoreApplication.translate("MappersDialog", u"Configure one or more wormhole mapper sources. All enabled mappers are queried together when you click \"Get Data\".", None))
+        self.label_intro.setText(QCoreApplication.translate("MappersDialog", u"Configure one or more wormhole mapper sources. All enabled mappers are queried together on each refresh.", None))
         self.pushButton_add.setText(QCoreApplication.translate("MappersDialog", u"Add\u2026", None))
         self.pushButton_edit.setText(QCoreApplication.translate("MappersDialog", u"Edit\u2026", None))
         self.pushButton_remove.setText(QCoreApplication.translate("MappersDialog", u"Remove", None))
     # retranslateUi
+

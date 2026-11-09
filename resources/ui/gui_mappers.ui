@@ -33,7 +33,7 @@
    <item>
     <widget class="QLabel" name="label_intro">
      <property name="text">
-      <string>Configure one or more wormhole mapper sources. All enabled mappers are queried together when you click &quot;Get Data&quot;.</string>
+      <string>Configure one or more wormhole mapper sources. All enabled mappers are queried together on each refresh.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
