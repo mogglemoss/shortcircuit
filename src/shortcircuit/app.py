@@ -63,6 +63,98 @@ class ClickableLabel(QtWidgets.QLabel):
         event.accept()
 
 
+class NameLabel(QtWidgets.QLabel):
+    """
+    Character-name label that fits whatever width the layout gives it.
+
+    EVE names run up to 37 characters, far wider than the space beside the
+    portrait. The name wraps at spaces onto at most `max_lines` lines; text
+    that still doesn't fit (a single very long word, or more words than
+    lines) ends in an ellipsis and the full name moves to the tooltip.
+    QLabel's own word wrap can't do this: it never breaks or elides a word
+    longer than the line, it just clips it.
+    """
+
+    def __init__(self, text="", max_lines=2, parent=None):
+        super().__init__(parent)
+        self._full_text = text
+        self._max_lines = max_lines
+        # Take the width the row offers instead of demanding the full
+        # single-line width of the name.
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        super().setText(text)
+
+    def full_text(self):
+        return self._full_text
+
+    def setText(self, text):
+        self._full_text = text
+        self._refit()
+
+    def minimumSizeHint(self):
+        return QtCore.QSize(0, super().minimumSizeHint().height())
+
+    def sizeHint(self):
+        return QtCore.QSize(0, super().sizeHint().height())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._refit()
+
+    def changeEvent(self, event):
+        # Stylesheet changes (the name turns bold blue on login) change the
+        # font metrics, so the fit has to be recomputed.
+        super().changeEvent(event)
+        if event.type() in (QtCore.QEvent.Type.FontChange, QtCore.QEvent.Type.StyleChange):
+            self._refit()
+
+    def fitted_lines(self, width):
+        """The lines this label shows at `width`, and whether any were cut."""
+        self.ensurePolished()
+        metrics = QtGui.QFontMetrics(self.font())
+
+        lines = []
+        current = ""
+        for word in self._full_text.split():
+            candidate = "{} {}".format(current, word) if current else word
+            if not current or metrics.horizontalAdvance(candidate) <= width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+
+        cut = False
+        if len(lines) > self._max_lines:
+            lines = lines[:self._max_lines - 1] + [" ".join(lines[self._max_lines - 1:])]
+            cut = True
+
+        fitted = []
+        for line in lines:
+            elided = metrics.elidedText(line, QtCore.Qt.TextElideMode.ElideRight, width)
+            cut = cut or elided != line
+            fitted.append(elided)
+        return fitted, cut
+
+    def _refit(self):
+        width = self.contentsRect().width()
+        if width <= 0:
+            if self.text() != self._full_text:
+                super().setText(self._full_text)
+            return
+
+        lines, cut = self.fitted_lines(width)
+        shown = "\n".join(lines)
+        if shown != self.text():
+            super().setText(shown)
+            self.updateGeometry()
+        self.setToolTip(self._full_text if cut else "")
+
+
 class RouteWorker(QtCore.QObject):
     finished = QtCore.Signal(list, str)
 
@@ -374,14 +466,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         identity_col = QtWidgets.QVBoxLayout()
         identity_col.setSpacing(3)
-        lbl_header = QtWidgets.QLabel("DAYTRIPPER")
+        lbl_header = NameLabel("DAYTRIPPER")
         lbl_header.setObjectName("sidebar_header")
         identity_col.addWidget(lbl_header)
         self.lbl_header = lbl_header
         self.lbl_connection.setStyleSheet("color: #5c6370; font-size: 11px;")
         identity_col.addWidget(self.lbl_connection)
-        identity_row.addLayout(identity_col)
-        identity_row.addStretch()
+        # The column takes all remaining width (no trailing stretch), so the
+        # name label knows exactly how much room it has to wrap into.
+        identity_row.addLayout(identity_col, 1)
         sidebar_layout.addLayout(identity_row)
 
         # Restrictions Group (Navigation lives in the route bar, not here)
