@@ -36,6 +36,11 @@ MAPPER_TYPE_DESCRIPTIONS = {
   TYPE_PATHFINDER: "Pathfinder instance exposing a JSON connections export",
 }
 
+# Types offered by Add. Pathfinder stays out until it reads a real Pathfinder
+# instance (its API needs a logged-in browser session, not a token); entries
+# added before keep their label and remain editable.
+ADDABLE_TYPES = (TYPE_TRIPWIRE, TYPE_EVESCOUT, TYPE_WANDERER)
+
 
 class AddMapperTypeDialog(QtWidgets.QDialog):
   """
@@ -56,7 +61,8 @@ class AddMapperTypeDialog(QtWidgets.QDialog):
     # how much fits on a line depends on the platform's font.
     self.list_types.setWordWrap(True)
     self.list_types.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    for type_key, label in MAPPER_TYPE_LABELS.items():
+    for type_key in ADDABLE_TYPES:
+      label = MAPPER_TYPE_LABELS[type_key]
       item = QtWidgets.QListWidgetItem()
       item.setData(QtCore.Qt.ItemDataRole.UserRole, type_key)
       item.setText("{}\n   {}".format(label, MAPPER_TYPE_DESCRIPTIONS.get(type_key, "")))
@@ -112,7 +118,8 @@ class WandererDialog(QtWidgets.QDialog, Ui_WandererDialog):
   Per-instance Wanderer edit dialog, opened from MappersDialog.
 
   Edits one Wanderer MapperConfig: name, instance URL, map slug and API
-  bearer token (generated in Wanderer under Map Settings -> API).
+  bearer token (generated in Wanderer under Map Settings -> Public Api ->
+  Generate).
   """
 
   def __init__(
