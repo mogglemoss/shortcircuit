@@ -4,6 +4,7 @@
 # Kept in upstream (secondfry/shortcircuit) style and structure so changes
 # here stay easy to offer upstream; the fork's own UI lives in app.py.
 
+import re
 from functools import partial
 from typing import List, Optional
 
@@ -136,6 +137,37 @@ class WandererDialog(QtWidgets.QDialog, Ui_WandererDialog):
     self.lineEdit_url.setText(url or "")
     self.lineEdit_map.setText(map_slug or "")
     self.lineEdit_token.setText(token or "")
+
+  # Wanderer generates map keys with UUID.uuid4() (maps_live.ex,
+  # "generate-map-api-key"); anything else is a key from elsewhere in
+  # Wanderer, or a stray paste, and the API will reject it.
+  _MAP_KEY = re.compile(r"[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}")
+
+  def accept(self):
+    token = self.lineEdit_token.text().strip()
+    if token and not self._MAP_KEY.fullmatch(token):
+      # The token field is masked, so say what is in it in terms the user can
+      # check without revealing it.
+      if token.startswith(("http://", "https://")) or "/" in token:
+        found = "a web address, not a key"
+      else:
+        found = f"{len(token)} characters"
+      answer = QtWidgets.QMessageBox.warning(
+        self,
+        "Not a Wanderer map key",
+        "The API token doesn't look like a Wanderer map key. Map keys are "
+        "36 characters with four dashes, like "
+        "1b4e28ba-2fa1-11d2-883f-0016d3cca427; this is {}.\n\n"
+        "Copy it with the clipboard button under Map Settings → Public Api "
+        "in Wanderer. Save it anyway?".format(found),
+        QtWidgets.QMessageBox.StandardButton.Save | QtWidgets.QMessageBox.StandardButton.Cancel,
+        QtWidgets.QMessageBox.StandardButton.Cancel,
+      )
+      if answer != QtWidgets.QMessageBox.StandardButton.Save:
+        self.lineEdit_token.setFocus()
+        self.lineEdit_token.selectAll()
+        return
+    super().accept()
 
 
 class PathfinderDialog(QtWidgets.QDialog, Ui_PathfinderDialog):
