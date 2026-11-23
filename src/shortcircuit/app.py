@@ -16,7 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets, QtNetwork
 from . import __appname__, __appslug__, __date__ as last_update, __version__
 from .mapper_dialogs import MappersDialog
 from .model.esi_processor import ESIProcessor
-from .model.evedb import EveDb, Restrictions, SpaceType, WormholeSize
+from .model.evedb import KNOWN_WH_SIZES, EveDb, Restrictions, SpaceType, WormholeSize
 from .model.logger import Logger
 from .model.mapper_config import (
     MapperConfig,
@@ -39,6 +39,28 @@ class StateEVEConnection(TypedDict):
     char_name: Union[str, None]
     char_id: int
     error: Union[str, None]
+
+
+# Splitting X-Large into freighter and capital entries moved "No Wormholes"
+# from index 4 to 5; indexes saved before that sit under the old key.
+WHSIZE_KEY = "restrictions_whsize_v2"
+LEGACY_WHSIZE_KEY = "restrictions_whsize"
+LEGACY_IGNORE_WORMHOLES_INDEX = 4
+
+
+def read_whsize_index(settings: QtCore.QSettings) -> int:
+    if settings.contains(WHSIZE_KEY):
+        return int(settings.value(WHSIZE_KEY))
+    index = int(settings.value(LEGACY_WHSIZE_KEY, "0"))
+    if index == LEGACY_IGNORE_WORMHOLES_INDEX:
+        return index + 1
+    return index
+
+
+def size_restriction_for_index(combo_index: int) -> Dict[WormholeSize, bool]:
+    """Block every size below the chosen ship's; the last entry, "No
+    Wormholes", blocks them all."""
+    return {size: i < combo_index for i, size in enumerate(KNOWN_WH_SIZES)}
 
 
 class StateMapper(TypedDict):
@@ -597,7 +619,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Restrictions
         self.comboBox_size = QtWidgets.QComboBox()
         self.comboBox_size.addItems(
-            ["Frigate (S)", "Cruiser (M)", "Battleship (L)", "Capital (XL)", "No Wormholes"]
+            ["Frigate (S)", "Cruiser (M)", "Battleship (L)", "Freighter (XL)", "Capital (XL)", "No Wormholes"]
         )
 
         self.checkBox_eol = QtWidgets.QCheckBox("Ignore EOL wormholes")
@@ -1146,7 +1168,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._avoid_entity_name(entity, announce=False)
 
         # Restrictions
-        self.comboBox_size.setCurrentIndex(int(self.settings.value("restrictions_whsize", "0")))
+        self.comboBox_size.setCurrentIndex(read_whsize_index(self.settings))
         self.checkBox_eol.setChecked(self.settings.value("restriction_eol", "false") == "true")
         self.checkBox_masscrit.setChecked(
             self.settings.value("restriction_masscrit", "false") == "true"
@@ -1199,7 +1221,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.setValue("avoidance_list", avoidance_list_string)
 
         # Restrictions
-        self.settings.setValue("restrictions_whsize", self.comboBox_size.currentIndex())
+        self.settings.setValue(WHSIZE_KEY, self.comboBox_size.currentIndex())
         self.settings.setValue("restriction_eol", self.checkBox_eol.isChecked())
         self.settings.setValue("restriction_masscrit", self.checkBox_masscrit.isChecked())
         self.settings.setValue("restriction_ignore_old", self.checkBox_ignore_old.isChecked())
@@ -1348,26 +1370,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.tableWidget_path.resizeRowsToContents()
 
-    def get_restrictions_size(self) -> Dict[WormholeSize, bool]:
-        size_restriction = {
-            WormholeSize.SMALL: True,
-            WormholeSize.MEDIUM: True,
-            WormholeSize.LARGE: True,
-            WormholeSize.XLARGE: True,
-        }
-
-        combo_index = self.comboBox_size.currentIndex()
-        if combo_index < 1:
-            size_restriction[WormholeSize.SMALL] = False
-        if combo_index < 2:
-            size_restriction[WormholeSize.MEDIUM] = False
-        if combo_index < 3:
-            size_restriction[WormholeSize.LARGE] = False
-        if combo_index < 4:
-            size_restriction[WormholeSize.XLARGE] = False
-
-        return size_restriction
-
     def get_restrictions_age(self) -> float:
         age_threshold = float("inf")
 
@@ -1414,7 +1416,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return res
 
     def get_restrictions(self) -> Restrictions:
-        size_restriction = self.get_restrictions_size()
+        size_restriction = size_restriction_for_index(self.comboBox_size.currentIndex())
         ignore_eol = self.checkBox_eol.isChecked()
         ignore_masscrit = self.checkBox_masscrit.isChecked()
         age_threshold = self.get_restrictions_age()

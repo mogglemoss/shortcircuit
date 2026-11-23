@@ -65,6 +65,8 @@ an existing parallel edge, `_merge_wormhole_at` unions the sources list,
 upgrades any placeholder sig/code slots to concrete values, and keeps the
 fresher payload (smaller `time_elapsed`) for size/life/mass. When no match
 is found, a new parallel edge is appended.
+`add_connection` also skips systems that `EveDb.is_routable` rejects and
+raises on an unknown connection type.
 
 If two reports match concretely on one side but disagree on the other,
 that's a scan error — fresher wins and a warning is logged.
@@ -74,6 +76,17 @@ Dijkstra's relaxation step iterates parallel edges per neighbor (see
 size/life/mass restriction on one parallel edge can route the user via
 another. `shortest_path` returns `(path_ids, path_edges)` so callers like
 `Navigation.route` can describe the specific edge that was used.
+
+Hole sizes are `WormholeSize` tiers by CCP's max jump mass: `XLARGE` is the
+1,000,000,000 kg tier (every such hole touches high-sec or Thera, which
+capitals can't enter) and `CAPITAL` the 2,000,000,000 kg one. Freighters, jump
+freighters and the Bowhead pick "X-Large (freighter)", which allows both
+tiers; the Rorqual and all other capitals pick "X-Large (capital)", which
+allows only `CAPITAL`. The Rorqual (0.8B kg) fits `XLARGE` holes by mass but
+is barred from high-sec and Thera. Hole codes (statics.csv) and each
+mapper's own size field cover both tiers; with no hole code or size field,
+`EveDb.get_whsize_by_system` guesses by class pair, and pairs no regular hole
+links stay `UNKNOWN`.
 
 The route-table `path_info` column surfaces the stored `sources` list as
 "Reported by: X, Y" so users can see which mappers contributed each hop.
@@ -149,6 +162,9 @@ deleted. `GET /api/maps/:map/signatures` adds the sig IDs on each side and the
 hole type where scanned. Life and mass use Wanderer's codes
 (`assets/js/hooks/Mapper/types/connection.ts`): `time_status` 1 (EOL 1h) and
 2 (EOL 4h) are end of life; `mass_status` 1 is less than half, 2 is critical.
+Hole size comes from the scanned hole type first, then `ship_size_type`
+(3 is the freighter tier, 4 capital; 2, Wanderer's default, counts as
+unknown), then the system pair.
 
 **Example**:
 ```python
@@ -407,6 +423,7 @@ When adding a new mapper, create unit tests following the pattern in:
 - `test_tripwire.py`: Tests for Tripwire implementation
 - `test_wanderer.py`: Tests for Wanderer implementation
 - `test_tripwire_gate.py`: Integration tests
+- `test_wanderer.py`: Tests for Wanderer implementation
 
 Example test structure:
 
